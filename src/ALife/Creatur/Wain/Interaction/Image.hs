@@ -152,8 +152,8 @@ indices w h = [(i,j) | i <- [0..h-1], j <- [0..w-1]]
 bigX :: Int -> Int -> Image
 bigX w h = Image w h . map f $ indices w h
   where f (i,j) = if abs (i - j) < 2 || abs (w - 1 - i - j) < 2
-                    then 0
-                    else 255
+                    then 255
+                    else 0
 
 readImage :: FilePath -> IO Image
 readImage filePath = do
