@@ -617,7 +617,10 @@ letSubjectReflect happinessBefore r = do
   assign subject x'
   assign (summary . rErr) err
   when (happinessAfter < happinessBefore) $ do
-    zoom universe . U.writeToLog $ "That was a mistake."
+    b <- use other
+    zoom universe . U.writeToLog $
+      "Choosing to " ++ show (view action r) ++ "  "
+        ++ objectId b ++ " was a mistake"
     (summary . rMistakeCount) += 1
 
 writeRawStats
