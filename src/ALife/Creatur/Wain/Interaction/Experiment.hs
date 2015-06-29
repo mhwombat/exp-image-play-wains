@@ -428,11 +428,7 @@ runAction :: Action -> StateT Experiment IO ()
 -- Eat
 --
 runAction Eat = do
-  applyFlirtationEffects
-  a <- use subject
   obj <- use other
-  zoom universe . U.writeToLog $
-    agentId a ++ " eats " ++ objectId obj
   let n = objectNum obj
   deltaE <- use (universe . U.uInteractionDeltaE)
   adjustSubjectEnergy (deltaE !! n) rEatDeltaE rChildEatDeltaE
@@ -442,11 +438,7 @@ runAction Eat = do
 -- Play
 --
 runAction Play = do
-  applyFlirtationEffects
-  a <- use subject
   obj <- use other
-  zoom universe . U.writeToLog $
-    agentId a ++ " plays with " ++ objectId obj
   let n = objectNum obj
   deltaB <- use (universe . U.uInteractionDeltaB)
   adjustSubjectBoredom (deltaB !! n) rPlayDeltaB
@@ -457,20 +449,14 @@ runAction Play = do
 --
 runAction Flirt = do
   applyFlirtationEffects
-  a <- use subject
   obj <- use other
-  zoom universe . U.writeToLog $
-    agentId a ++ " flirts with " ++ objectId obj
   unless (isImage obj) flirt
+  (summary.rFlirtCount) += 1
 
 --
 -- Ignore
 --
 runAction Ignore = do
-  a <- use subject
-  obj <- use other
-  zoom universe . U.writeToLog $
-    agentId a ++ " ignores " ++ objectId obj
   (summary.rIgnoreCount) += 1
 
 --
@@ -510,7 +496,6 @@ applyFlirtationEffects :: StateT Experiment IO ()
 applyFlirtationEffects = do
   deltaE <- use (universe . U.uFlirtingDeltaE)
   adjustSubjectEnergy deltaE rFlirtingDeltaE undefined
-  (summary.rFlirtCount) += 1
 
 updateChildren :: StateT Experiment IO ()
 updateChildren = do
