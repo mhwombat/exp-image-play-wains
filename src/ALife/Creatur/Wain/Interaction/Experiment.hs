@@ -619,7 +619,7 @@ letSubjectReflect happinessBefore r = do
   when (happinessAfter < happinessBefore) $ do
     b <- use other
     zoom universe . U.writeToLog $
-      "Choosing to " ++ show (view action r) ++ "  "
+      agentId x ++ "'s choice to " ++ show (view action r) ++ " (with) "
         ++ objectId b ++ " was a mistake"
     (summary . rMistakeCount) += 1
 
