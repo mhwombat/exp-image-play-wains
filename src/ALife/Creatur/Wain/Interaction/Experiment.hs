@@ -55,7 +55,8 @@ import ALife.Creatur.Wain.Interaction.Wain (Wain,
   buildWainAndGenerateGenome, appearance, name, chooseAction, incAge,
   applyMetabolismCost, weanMatureChildren, pruneDeadChildren,
   adjustEnergy, autoAdjustBoredom, adjustBoredom, autoAdjustPassion,
-  reflect, mate, litter, brain, energy, childEnergy, age, wainSize)
+  reflect, mate, litter, brain, energy, childEnergy, age, wainSize,
+  happiness)
 import ALife.Creatur.Persistent (getPS, putPS)
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats)
@@ -166,7 +167,8 @@ data Summary = Summary
     _rFlirtCount :: Int,
     _rMateCount :: Int,
     _rIgnoreCount :: Int,
-    _rDeathCount :: Int
+    _rDeathCount :: Int,
+    _rMistakeCount :: Int
   }
 makeLenses ''Summary
 
@@ -198,7 +200,8 @@ initSummary p = Summary
     _rFlirtCount = 0,
     _rMateCount = 0,
     _rIgnoreCount = 0,
-    _rDeathCount = 0
+    _rDeathCount = 0,
+    _rMistakeCount = 0
   }
 
 summaryStats :: Summary -> [Stats.Statistic]
@@ -230,7 +233,8 @@ summaryStats r =
     Stats.iStat "flirted" (view rFlirtCount r),
     Stats.iStat "mated" (view rMateCount r),
     Stats.iStat "ignored" (view rIgnoreCount r),
-    Stats.iStat "died" (view rDeathCount r)
+    Stats.iStat "died" (view rDeathCount r),
+    Stats.iStat "mistakes" (view rMistakeCount r)
   ]
 
 data Experiment = Experiment
@@ -274,8 +278,9 @@ run' = do
   runMetabolism
   applyPopControl
   r <- chooseSubjectAction
+  happinessBefore <- happiness <$> use subject
   runAction (view action r)
-  letSubjectReflect r
+  letSubjectReflect happinessBefore r
   autoAdjustSubjectPassion
   autoAdjustSubjectBoredom
   subject %= incAge
@@ -603,13 +608,17 @@ autoAdjustSubjectPassion
 autoAdjustSubjectPassion = subject %= autoAdjustPassion
 
 letSubjectReflect
-  :: Response Action -> StateT Experiment IO ()
-letSubjectReflect r = do
+  :: UIDouble -> Response Action -> StateT Experiment IO ()
+letSubjectReflect happinessBefore r = do
   x <- use subject
   p <- objectAppearance <$> use other
+  happinessAfter <- happiness <$> use subject
   let (x', err) = reflect [p] r x
   assign subject x'
   assign (summary . rErr) err
+  when (happinessAfter < happinessBefore) $ do
+    zoom universe . U.writeToLog $ "That was a mistake."
+    (summary . rMistakeCount) += 1
 
 writeRawStats
   :: String -> FilePath -> [Stats.Statistic]
