@@ -83,6 +83,7 @@ import qualified ALife.Creatur.Logger.SimpleLogger as SL
 import ALife.Creatur.Persistent (Persistent, mkPersistent)
 import qualified ALife.Creatur.Universe as U
 import qualified ALife.Creatur.Wain.Checkpoint as CP
+import ALife.Creatur.Wain.PlusMinusOne (PM1Double)
 import ALife.Creatur.Wain.UnitInterval (UIDouble)
 import ALife.Creatur.Wain.Interaction.ImageDB (ImageDB, mkImageDB)
 import Control.Exception (SomeException, try)
@@ -128,7 +129,7 @@ data Universe a = Universe
     _uInteractionDeltaB :: [Double],
     _uFlirtingDeltaE :: Double,
     _uPopControlDeltaE :: Persistent Double,
-    _uOutcomeRange :: (Double, Double),
+    _uOutcomeRange :: (PM1Double, PM1Double),
     _uClassifierR0Range :: (UIDouble,UIDouble),
     _uClassifierDRange :: (UIDouble,UIDouble),
     _uDeciderR0Range :: (UIDouble,UIDouble),
@@ -240,19 +241,19 @@ cInteractionDeltaB = requiredSetting "interactionDeltaB"
 cFlirtingDeltaE :: Setting Double
 cFlirtingDeltaE = requiredSetting "flirtingDeltaE"
 
-cOutcomeRange :: Setting (Double,Double)
+cOutcomeRange :: Setting (PM1Double, PM1Double)
 cOutcomeRange = requiredSetting "outcomeRange"
 
-cClassifierR0Range :: Setting (UIDouble,UIDouble)
+cClassifierR0Range :: Setting (UIDouble, UIDouble)
 cClassifierR0Range = requiredSetting "classifierR0Range"
 
-cClassifierDRange :: Setting (UIDouble,UIDouble)
+cClassifierDRange :: Setting (UIDouble, UIDouble)
 cClassifierDRange = requiredSetting "classifierDecayRange"
 
-cDeciderR0Range :: Setting (UIDouble,UIDouble)
+cDeciderR0Range :: Setting (UIDouble, UIDouble)
 cDeciderR0Range = requiredSetting "deciderR0Range"
 
-cDeciderDRange :: Setting (UIDouble,UIDouble)
+cDeciderDRange :: Setting (UIDouble, UIDouble)
 cDeciderDRange = requiredSetting "deciderDecayRange"
 
 cCheckpoints :: Setting [CP.Checkpoint]

@@ -208,7 +208,7 @@ summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
     Stats.dStat "pop. size" (view rPopSize r),
-    Stats.uiStat "novelty" (view rOtherNovelty r),
+    Stats.dStat "novelty" (view rOtherNovelty r),
     Stats.iStat "novelty (adj.)"
       (view rOtherAdjustedNovelty r),
     Stats.dStat "adult metabolism Δe" (view rMetabolismDeltaE r),
@@ -435,8 +435,8 @@ runAction :: Action -> StateT Experiment IO ()
 runAction Eat = do
   obj <- use other
   let n = objectNum obj
-  deltaE <- use (universe . U.uInteractionDeltaE)
-  adjustSubjectEnergy (deltaE !! n) rEatDeltaE rChildEatDeltaE
+  deltaEs <- use (universe . U.uInteractionDeltaE)
+  adjustSubjectEnergy (deltaEs !! n) rEatDeltaE rChildEatDeltaE
   (summary.rEatCount) += 1
 
 --
@@ -445,8 +445,8 @@ runAction Eat = do
 runAction Play = do
   obj <- use other
   let n = objectNum obj
-  deltaB <- use (universe . U.uInteractionDeltaB)
-  adjustSubjectBoredom (deltaB !! n) rPlayDeltaB
+  deltaBs <- use (universe . U.uInteractionDeltaB)
+  adjustSubjectBoredom (deltaBs !! n) rPlayDeltaB
   (summary.rPlayCount) += 1
 
 --
@@ -471,7 +471,8 @@ runAction Ignore = do
 applyPopControl :: StateT Experiment IO ()
 applyPopControl = do
   deltaE <- zoom (universe . U.uPopControlDeltaE) getPS
-  adjustSubjectEnergy deltaE rPopControlDeltaE rChildPopControlDeltaE
+  adjustSubjectEnergy deltaE rPopControlDeltaE
+    rChildPopControlDeltaE
 
 flirt :: StateT Experiment IO ()
 flirt = do
@@ -582,13 +583,15 @@ printStats = mapM_ f
                  "Summary - " ++ intercalate "," (map pretty xs)
 
 adjustSubjectEnergy
-  :: Double -> Simple Lens Summary Double -> Simple Lens Summary Double
-    -> StateT Experiment IO ()
+  :: Double -> Simple Lens Summary Double
+    -> Simple Lens Summary Double -> StateT Experiment IO ()
 adjustSubjectEnergy deltaE adultSelector childSelector = do
   x <- use subject
-  let (x', adultDeltaE, childDeltaE) = adjustEnergy deltaE x
+  let (x', adultDeltaE, childDeltaE)
+        = adjustEnergy deltaE x
   (summary . adultSelector) += adultDeltaE
-  when (childDeltaE /= 0) $ (summary . childSelector) += childDeltaE
+  when (childDeltaE /= 0) $
+    (summary . childSelector) += childDeltaE
   assign subject x'
 
 adjustSubjectBoredom

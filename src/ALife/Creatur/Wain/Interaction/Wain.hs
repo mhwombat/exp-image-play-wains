@@ -32,8 +32,7 @@ import ALife.Creatur.Genetics.Reproduction.Sexual (Reproductive, Strand,
 import qualified ALife.Creatur.Wain.Brain as B
 import ALife.Creatur.Wain.GeneticSOM (Label, Thinker, Pattern)
 import qualified ALife.Creatur.Wain.Response as R
-import ALife.Creatur.Wain.Statistics (Statistical, stats, iStat, dStat,
-  uiStat)
+import ALife.Creatur.Wain.Statistics (Statistical, stats, iStat, dStat)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble,
   doubleToUI, forceDoubleToUI)
 import ALife.Creatur.Wain.Util (unitInterval, enforceRange)
@@ -158,20 +157,20 @@ instance (Eq a, Ord a) =>
   Statistical (Wain p t a) where
   stats w =
     iStat "age" (_age w)
-      : uiStat "devotion" (_devotion w)
+      : dStat "devotion" (_devotion w)
       : iStat "maturity" (_ageOfMaturity w)
-      : uiStat "Δp" (_passionDelta w)
-      : uiStat "Δb" (_boredomDelta w)
+      : dStat "Δp" (_passionDelta w)
+      : dStat "Δb" (_boredomDelta w)
       : iStat "size" (_wainSize w)
       : iStat "children borne (lifetime)" (_childrenBorneLifetime w)
       : iStat "children reared (lifetime)" (_childrenWeanedLifetime w)
-      : uiStat "adult energy" e
-      : uiStat "child energy" ec
+      : dStat "adult energy" e
+      : dStat "child energy" ec
       : dStat "energy" (uiToDouble e + uiToDouble ec)
-      : uiStat "passion" (_passion w)
-      : uiStat "boredom" (_boredom w)
+      : dStat "passion" (_passion w)
+      : dStat "boredom" (_boredom w)
       : iStat "current litter size" (length . _litter $ w)
-      : uiStat "happiness" (happiness w)
+      : dStat "happiness" (happiness w)
       : iStat "swagger" (_swagger w)
       : stats (_brain w)
       ++ [iStat "genome length" ( (length . fst . _genome $ w)
