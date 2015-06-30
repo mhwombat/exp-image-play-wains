@@ -315,8 +315,9 @@ fillInSummary s = s
          + _rChildPopControlDeltaE s
          + _rChildEatDeltaE s
          + _rChildOldAgeDeltaE s
-         -- - _rMatingDeltaE s
-         -- - _rOtherMatingDeltaE s
+         -- include energy given to wains when they are born
+         - _rMatingDeltaE s
+         - _rOtherMatingDeltaE s
   }
 
 balanceEnergyEquation
