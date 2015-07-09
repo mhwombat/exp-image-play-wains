@@ -38,7 +38,7 @@ import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
   randomExponential, numModels, schemaQuality, toList, Label)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
-import ALife.Creatur.Wain.Response (Response, randomResponse, action,
+import ALife.Creatur.Wain.Response (Response, responseSet, action,
   outcome, scenario)
 import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
@@ -110,8 +110,8 @@ type ImageWain = Wain Image ImageThinker  Action
 
 randomImageWain
   :: RandomGen r
-    => String -> U.Universe ImageWain -> Word16 -> Word16 -> Rand r ImageWain
-randomImageWain wainName u classifierSize deciderSize = do
+    => String -> U.Universe ImageWain -> Word16 -> Rand r ImageWain
+randomImageWain wainName u classifierSize = do
   let w = view U.uImageWidth u
   let h = view U.uImageHeight u
   let r = view U.uInitialImageRange u
@@ -125,8 +125,9 @@ randomImageWain wainName u classifierSize deciderSize = do
               { _r0Range = view U.uDeciderR0Range u,
                 _dRange = view U.uDeciderDRange u }
   fd <- randomExponential fdp
-  xs <- replicateM (fromIntegral deciderSize) $
-         randomResponse 2 (numModels c) 4 (view U.uOutcomeRange u)
+  -- xs <- replicateM (fromIntegral deciderSize) $
+  --        randomResponse 2 (numModels c) 4 (view U.uOutcomeRange u)
+  let xs = responseSet 2 (numModels c) 4
   cw <- (makeWeights . take 3) <$> getRandoms
   sw <- (makeWeights . take 3) <$> getRandoms
   rw <- (makeWeights . take 2) <$> getRandoms
