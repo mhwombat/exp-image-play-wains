@@ -30,7 +30,8 @@ import ALife.Creatur.Genetics.Recombination (mutatePairedLists,
 import ALife.Creatur.Genetics.Reproduction.Sexual (Reproductive, Strand,
   produceGamete, build, makeOffspring)
 import qualified ALife.Creatur.Wain.Brain as B
-import ALife.Creatur.Wain.GeneticSOM (Label, Thinker, Pattern)
+import ALife.Creatur.Wain.GeneticSOM (Label, Tweaker, Pattern)
+import ALife.Creatur.Wain.PlusMinusOne (PM1Double, pm1ToDouble)
 import qualified ALife.Creatur.Wain.Response as R
 import ALife.Creatur.Wain.Statistics (Statistical, stats, iStat, dStat)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble,
@@ -65,6 +66,12 @@ data Wain p t a = Wain
     -- | The amount that a wain's boredom increases at each CPU turn.
     --   this influences the frequency of mating.
     _boredomDelta :: UIDouble,
+    -- | If a wain has no model for a response it's considering, it
+    --   will use this value as a prediction.
+    --   A positive value makes the wain optimistic and more likely to
+    --   take risks. A negative value makes the wain pessimistic and
+    --   risk-averse.
+    _defaultOutcome :: PM1Double,
     -- | The wain's current energy level.
     --   This is a number between 0 and 1, inclusive.
     _energy :: UIDouble,
@@ -82,9 +89,6 @@ data Wain p t a = Wain
     _childrenBorneLifetime :: Word16,
     -- | The number of children this wain has reared to maturity.
     _childrenWeanedLifetime :: Word16,
-    -- | The number of classifications agreed upon during a wain's
-    --   lifetime.
-    _swagger :: Word16,
     -- | The wain's genes.
     _genome :: ([Word8],[Word8]),
     -- The size of this wain. Useful for determining a metabolism rate.
@@ -93,21 +97,21 @@ data Wain p t a = Wain
 makeLenses ''Wain
 
 buildWain
-  :: (Genetic p, Genetic t, Genetic a, Eq a, Thinker t, p ~ Pattern t,
+  :: (Genetic p, Genetic t, Genetic a, Eq a, Tweaker t, p ~ Pattern t,
     Serialize p, Serialize t, Serialize a)
     => String -> p -> B.Brain p t a -> UIDouble -> Word16 -> UIDouble
-      -> UIDouble -> (Sequence, Sequence) -> Wain p t a
-buildWain n a b d m p bd g = set wainSize s w
+      -> UIDouble -> PM1Double -> (Sequence, Sequence) -> Wain p t a
+buildWain n a b d m p bd dOut g = set wainSize s w
   -- We first set the size to 0, then figure out what the size really
   -- is.
   where w = Wain
               {
                 _name=n, _appearance=a, _brain=b, _devotion=d,
                 _ageOfMaturity=m, _passionDelta=p, _boredomDelta=bd,
-                _energy=0, _passion=1, _boredom=1, _age=0,
-                _litter=[],
+                _defaultOutcome=dOut, _energy=0, _passion=1, _boredom=1,
+                _age=0, _litter=[],
                 _childrenBorneLifetime=0, _childrenWeanedLifetime=0,
-                _swagger=0, _genome=g, _wainSize=0
+                _genome=g, _wainSize=0
               }
         s = BS.length . encode $ w
 
@@ -117,29 +121,32 @@ buildWain n a b d m p bd g = set wainSize s w
 buildWainAndGenerateGenome
   :: (Genetic p, Genetic t, Genetic a,
     Serialize p, Serialize t, Serialize a,
-      Eq a, Thinker t, p ~ Pattern t)
-        => String -> p -> B.Brain p t a -> UIDouble -> Word16 -> UIDouble
-          -> UIDouble -> Wain p t a
-buildWainAndGenerateGenome n a b d m p bd = set genome (g,g) strawMan
-  where strawMan = buildWain n a b d m p bd ([], [])
+      Eq a, Tweaker t, p ~ Pattern t)
+        => String -> p -> B.Brain p t a -> UIDouble -> Word16
+          -> UIDouble -> UIDouble -> PM1Double -> Wain p t a
+buildWainAndGenerateGenome n a b d m p bd dOut = set genome (g,g) strawMan
+  where strawMan = buildWain n a b d m p bd dOut ([], [])
         g = write strawMan
 
 -- | Constructs a wain from its genome. This is used when a child is
 --   produced as the result of mating.
 buildWainFromGenome
   :: (Genetic p, Genetic t, Genetic a, Diploid p, Diploid t, Diploid a,
-    Serialize p, Serialize t, Serialize a, Eq a, Thinker t,
+    Serialize p, Serialize t, Serialize a, Eq a, Tweaker t,
       p ~ Pattern t)
         => Bool -> String -> DiploidReader (Either [String] (Wain p t a))
-buildWainFromGenome truncateGenome n = do
-  a <- getAndExpress
-  b <- getAndExpress
-  d <- getAndExpress
-  m <- getAndExpress
-  p <- getAndExpress
-  bd <- getAndExpress
+buildWainFromGenome truncateGenome wName = do
+  wAppearance <- getAndExpress
+  wBrain <- getAndExpress
+  wDevotion <- getAndExpress
+  wAgeOfMaturity <- getAndExpress
+  wPassionDelta <- getAndExpress
+  wBoredomDelta <- getAndExpress
+  wDefaultOutcome <- getAndExpress
   g <- if truncateGenome then consumed2 else copy2
-  return $ buildWain n <$> a <*> b <*> d <*> m <*> p <*> bd <*> pure g
+  return $ buildWain wName <$> wAppearance <*> wBrain <*> wDevotion
+             <*> wAgeOfMaturity <*> wPassionDelta <*> wBoredomDelta
+             <*> wDefaultOutcome <*> pure g
 
 deriving instance (Show p, Show t, Show a, Eq a)
     => Show (Wain p t a)
@@ -161,6 +168,7 @@ instance (Eq a, Ord a) =>
       : iStat "maturity" (_ageOfMaturity w)
       : dStat "Δp" (_passionDelta w)
       : dStat "Δb" (_boredomDelta w)
+      : dStat "def. outcome" (pm1ToDouble $ _defaultOutcome w)
       : iStat "size" (_wainSize w)
       : iStat "children borne (lifetime)" (_childrenBorneLifetime w)
       : iStat "children reared (lifetime)" (_childrenWeanedLifetime w)
@@ -171,21 +179,20 @@ instance (Eq a, Ord a) =>
       : dStat "boredom" (_boredom w)
       : iStat "current litter size" (length . _litter $ w)
       : dStat "happiness" (happiness w)
-      : iStat "swagger" (_swagger w)
       : stats (_brain w)
       ++ [iStat "genome length" ( (length . fst . _genome $ w)
                                   + (length . snd . _genome $ w) )]
     where e = _energy w
           ec = sum . map (view energy) $ _litter w
-                               
-instance (Serialize p, Serialize t, Serialize a, Eq a, Thinker t,
+
+instance (Serialize p, Serialize t, Serialize a, Eq a, Tweaker t,
   p ~ Pattern t)
     => Serialize (Wain p t a)
 
 -- This implementation is useful for generating the genes in the
 -- initial population, and for testing
 instance (Genetic p, Genetic t, Genetic a, Eq a,
-  Serialize p, Serialize t, Serialize a, Thinker t, p ~ Pattern t)
+  Serialize p, Serialize t, Serialize a, Tweaker t, p ~ Pattern t)
     => Genetic (Wain p t a) where
   put w = put (_appearance w)
             >> put (_brain w)
@@ -193,6 +200,7 @@ instance (Genetic p, Genetic t, Genetic a, Eq a,
             >> put (_ageOfMaturity w)
             >> put (_passionDelta w)
             >> put (_boredomDelta w)
+            >> put (_defaultOutcome w)
   get = do
     g <- copy
     a <- get
@@ -201,22 +209,24 @@ instance (Genetic p, Genetic t, Genetic a, Eq a,
     m <- get
     p <- get
     bd <- get
-    return $ buildWain "" <$> a <*> b <*> d <*> m <*> p <*> bd
+    dOut <- get
+    return $ buildWain "" <$> a <*> b <*> d <*> m <*> p <*> bd <*> dOut
                <*> pure (g, g)
 
 -- This implementation is useful for testing
 instance (Diploid p, Diploid t, Diploid a,
   Genetic p, Genetic t, Genetic a, Eq a,
-    Serialize p, Serialize t, Serialize a, Thinker t, p ~ Pattern t)
+    Serialize p, Serialize t, Serialize a, Tweaker t, p ~ Pattern t)
       => Diploid (Wain p t a) where
-  express x y = buildWain "" a b d m p bd ([],[])
+  express x y = buildWain "" a b d m p bd dOut ([],[])
     where a = express (_appearance x)    (_appearance y)
           b = express (_brain x)         (_brain y)
           d = express (_devotion x)      (_devotion y)
           m = express (_ageOfMaturity x) (_ageOfMaturity y)
           p = express (_passionDelta x)  (_passionDelta y)
           bd = express (_boredomDelta x)  (_boredomDelta y)
-          
+          dOut = express (_defaultOutcome x)  (_defaultOutcome y)
+
 instance Agent (Wain p t a) where
   agentId = view name
   isAlive w = _energy w > 0
@@ -224,7 +234,7 @@ instance Agent (Wain p t a) where
 instance (Genetic p, Genetic t, Genetic a,
   Diploid p, Diploid t, Diploid a,
     Serialize p, Serialize t, Serialize a,
-      Eq a, Thinker t, p ~ Pattern t)
+      Eq a, Tweaker t, p ~ Pattern t)
         => Reproductive (Wain p t a) where
   type Strand (Wain p t a) = Sequence
   produceGamete a =
@@ -254,7 +264,7 @@ mature a = _age a >= _ageOfMaturity a
 -- | Returns the wain's current condition. This is useful for making
 --   decisions.
 condition :: Wain p t a -> [UIDouble]
-condition w = [ _energy w, 1 - _passion w, 1 - _boredom w, 
+condition w = [ _energy w, 1 - _passion w, 1 - _boredom w,
                 if l > 0 then 1 else 0 ]
   where l = length . _litter $ w
 
@@ -287,7 +297,9 @@ chooseAction
       -> ([Label], Label, R.Response a, Wain p t a,
            [(R.Response a, Label)], [UIDouble])
 chooseAction ps w = (ks, k, r, w', xs, ns)
-  where (ks, k, r, b', xs, ns) = B.chooseAction (_brain w) ps (condition w)
+  where (ks, k, r, b', xs, ns)
+          = B.chooseAction (_brain w) ps (condition w)
+              (_defaultOutcome w)
         w' = set brain b' w
 
 -- | @'applyMetabolismCost' baseCost costPerByte childCostFactor w@
@@ -393,13 +405,9 @@ incAge = incAge1 . incLitterAge
 incLitterAge :: Wain p t a -> Wain p t a
 incLitterAge w = set litter litter' w
   where litter' = map incAge1 $ _litter w
-  
+
 incAge1 :: Wain p t a -> Wain p t a
 incAge1 = age +~ 1
-
--- | Increments a wain's swagger count
-incSwagger :: Wain p t a -> Wain p t a
-incSwagger = swagger +~ 1
 
 -- | Causes a wain to considers whether it is happier or not as a
 --   result of the last action it took, and modifies its decision models
@@ -444,7 +452,7 @@ mate
   :: (RandomGen r, Diploid p, Diploid t, Diploid a,
     Genetic p, Genetic t, Genetic a,
       Serialize p, Serialize t, Serialize a,
-        Eq a, Thinker t, p ~ Pattern t)
+        Eq a, Tweaker t, p ~ Pattern t)
           => Wain p t a -> Wain p t a -> String
             -> Rand r ([Wain p t a], [String], Double, Double)
 mate a b babyName
@@ -458,7 +466,7 @@ mate'
   :: (RandomGen r, Diploid p, Diploid t, Diploid a,
     Genetic p, Genetic t, Genetic a,
       Serialize p, Serialize t, Serialize a,
-        Eq a, Thinker t, p ~ Pattern t)
+        Eq a, Tweaker t, p ~ Pattern t)
           => Wain p t a -> Wain p t a -> String
             -> Rand r ([Wain p t a], [String], Double, Double)
 mate' a b babyName = do

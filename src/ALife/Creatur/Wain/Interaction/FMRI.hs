@@ -21,13 +21,14 @@ module ALife.Creatur.Wain.Interaction.FMRI
   ) where
 
 import ALife.Creatur.Wain.Brain (classifier)
-import ALife.Creatur.Wain.GeneticSOM (Label, toList)
+import ALife.Creatur.Wain.GeneticSOM (Label, modelMap)
 import ALife.Creatur.Wain.Interaction.Image
-import ALife.Creatur.Wain.Interaction.ImageThinker
+import ALife.Creatur.Wain.Interaction.ImageTweaker
 import ALife.Creatur.Wain.Interaction.Wain
 import Control.Lens hiding ((#), none)
 import Data.Colour.SRGB
 import Data.List.Split
+import Data.Map.Strict (toList)
 import Data.Typeable
 import Data.Word
 import Diagrams.Prelude hiding (view)
@@ -78,8 +79,8 @@ drawClassifier
       => [(Label, Image)] -> QDiagram b V2 n Any
 drawClassifier = mconcat . zipWith translateY [0,-1.2..] . map (alignL . drawRow) . chunksOf 6
 
-writeFmri :: Wain Image ImageThinker a -> FilePath -> IO ()
+writeFmri :: Wain Image ImageTweaker a -> FilePath -> IO ()
 writeFmri w f = renderSVG f ss diagram
   where ss = mkSizeSpec2D (Just 500) Nothing
         c = view classifier . view brain $ w
-        diagram = drawClassifier . toList $ c :: QDiagram SVG V2 Double Any
+        diagram = drawClassifier . toList . modelMap $ c :: QDiagram SVG V2 Double Any

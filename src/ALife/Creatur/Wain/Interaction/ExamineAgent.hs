@@ -25,7 +25,7 @@ import ALife.Creatur.Wain.PlusMinusOne
 import ALife.Creatur.Wain.UnitInterval
 import Control.Lens
 import Control.Monad.State
-import Data.Map.Strict (elems)
+import Data.Map.Strict (elems, toList)
 import System.Environment
 import Text.Printf (printf)
 
@@ -33,14 +33,14 @@ getAndExamineAll :: StateT (Universe ImageWain) IO ()
 getAndExamineAll = do
   names <- agentIds
   mapM_ getAndExamine names
-  
+
 getAndExamine :: String -> StateT (Universe ImageWain) IO ()
 getAndExamine s = do
   a <- getAgent s
   case a of
     (Right agent) -> liftIO $ examine agent
-    (Left msg)    -> liftIO $ putStrLn msg 
-  
+    (Left msg)    -> liftIO $ putStrLn msg
+
 examine :: ImageWain -> IO ()
 examine a = do
   putStrLn $ "name: " ++ show (view name a)
@@ -57,8 +57,7 @@ examine a = do
   putStrLn $ "total # children weaned: "
     ++ show (view childrenWeanedLifetime a)
   putStrLn $ "litter size: " ++ show (length . view litter $ a)
-  putStrLn $ "counts=" ++ show (elems . view counterMap . view classifier . view brain $ a)
-  putStrLn $ "swagger: " ++ show (view swagger a)
+  putStrLn $ "counts=" ++ show (elems . counterMap . view classifier . view brain $ a)
   putStrLn $ "size: " ++ show (view wainSize a)
   putStrLn $ "SQ: " ++ show (schemaQuality . view decider . view brain $ a)
   putStrLn $ "Number of classifier models: " ++ show (numModels . view classifier . view brain $ a)
@@ -72,7 +71,7 @@ examine a = do
   putStrLn "-----------------"
   putStrLn "Response models"
   putStrLn "-----------------"
-  mapM_ putStrLn $ concatMap prettyResponseModel (toList . view decider . view brain $ a)
+  mapM_ putStrLn $ concatMap prettyResponseModel (toList . modelMap . view decider . view brain $ a)
   -- putStrLn "--------"
   -- putStrLn "Raw data"
   -- putStrLn "--------"
@@ -88,7 +87,7 @@ prettyResponseModel (l, r) =
     "Boredom: " ++ show ((!!3) . view (scenario . Scenario.condition) $ r),
     "Action: " ++ show (view action r),
     "Expected happiness change: "
-      ++ maybe "" (printf "%.3g" . pm1ToDouble) (view outcome r),
+      ++ (printf "%.3g" . pm1ToDouble) (view outcome r),
     "-----" ]
 
 formatVector :: String -> [Double] -> String

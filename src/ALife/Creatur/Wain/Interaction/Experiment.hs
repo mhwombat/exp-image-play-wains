@@ -18,7 +18,7 @@
 module ALife.Creatur.Wain.Interaction.Experiment
   (
     ImageWain,
-    ImageThinker(..),
+    ImageTweaker(..),
     run,
     randomImageWain,
     finishRound,
@@ -35,10 +35,10 @@ import ALife.Creatur.Wain.Checkpoint (enforceAll)
 import ALife.Creatur.Wain.Classifier (buildClassifier)
 import ALife.Creatur.Wain.Decider (buildDecider)
 import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
-  randomExponential, numModels, schemaQuality, toList, Label)
+  randomExponential, schemaQuality, modelMap, Label)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
-import ALife.Creatur.Wain.Response (Response, responseSet, action,
+import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
 import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
@@ -46,9 +46,8 @@ import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..))
 import qualified ALife.Creatur.Wain.Interaction.FMRI as F
-import ALife.Creatur.Wain.Interaction.Image (Image, bigX,
-  randomImageR)
-import ALife.Creatur.Wain.Interaction.ImageThinker (ImageThinker(..))
+import ALife.Creatur.Wain.Interaction.Image (Image, bigX)
+import ALife.Creatur.Wain.Interaction.ImageTweaker (ImageTweaker(..))
 import ALife.Creatur.Wain.Interaction.ImageDB (ImageDB, anyImage)
 import qualified ALife.Creatur.Wain.Interaction.Universe as U
 import ALife.Creatur.Wain.Interaction.Wain (Wain,
@@ -64,13 +63,13 @@ import ALife.Creatur.Wain.Statistics (summarise)
 import ALife.Creatur.Wain.Weights (makeWeights)
 import Control.Conditional (whenM)
 import Control.Lens hiding (universe)
-import Control.Monad (replicateM, when, unless)
+import Control.Monad (when, unless)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandomRs,
-  getRandoms, evalRandIO, fromList)
+  getRandom, getRandoms, evalRandIO, fromList)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.List (intercalate)
-import Data.Maybe (fromJust)
+import Data.Map.Strict (toList)
 import Data.Word (Word16)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
@@ -106,40 +105,42 @@ addIfAgent :: Object -> [ImageWain] -> [ImageWain]
 addIfAgent (IObject _ _) xs = xs
 addIfAgent (AObject a) xs = a:xs
 
-type ImageWain = Wain Image ImageThinker  Action
+type ImageWain = Wain Image ImageTweaker  Action
 
 randomImageWain
   :: RandomGen r
-    => String -> U.Universe ImageWain -> Word16 -> Rand r ImageWain
-randomImageWain wainName u classifierSize = do
+    => String -> U.Universe ImageWain -> Word16 -> Word16
+      -> Rand r ImageWain
+randomImageWain wainName u classifierSize deciderSize = do
   let w = view U.uImageWidth u
   let h = view U.uImageHeight u
-  let r = view U.uInitialImageRange u
-  imgs <- replicateM (fromIntegral classifierSize) (randomImageR w h r)
   let fcp = RandomExponentialParams
                { _r0Range = view U.uClassifierR0Range u,
                  _dRange = view U.uClassifierDRange u }
   fc <- randomExponential fcp
-  let c = buildClassifier fc ImageThinker imgs
+  classifierThreshold <- getRandom
+  let c = buildClassifier fc classifierSize classifierThreshold
+            ImageTweaker
   let fdp = RandomExponentialParams
               { _r0Range = view U.uDeciderR0Range u,
                 _dRange = view U.uDeciderDRange u }
   fd <- randomExponential fdp
   -- xs <- replicateM (fromIntegral deciderSize) $
   --        randomResponse 2 (numModels c) 4 (view U.uOutcomeRange u)
-  xs <- responseSet 2 (numModels c) 4
+  deciderThreshold <- getRandom
   cw <- (makeWeights . take 3) <$> getRandoms
   sw <- (makeWeights . take 3) <$> getRandoms
   rw <- (makeWeights . take 2) <$> getRandoms
-  let dr = buildDecider fd cw sw rw xs
+  let dr = buildDecider fd deciderSize deciderThreshold cw sw rw
   hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
   let b = Brain c dr hw
   dv <- getRandomR . view U.uDevotionRange $ u
   m <- getRandomR . view U.uMaturityRange $ u
-  p <- getRandomR unitInterval
-  bd <- getRandomR unitInterval
+  p <- getRandom
+  bd <- getRandom
+  dOut <- getRandom
   let app = bigX w h
-  return $ buildWainAndGenerateGenome wainName app b dv m p bd
+  return $ buildWainAndGenerateGenome wainName app b dv m p bd dOut
 
 data Summary = Summary
   {
@@ -311,7 +312,7 @@ fillInSummary s = s
          + _rFlirtingDeltaE s
          + _rMatingDeltaE s
          + _rOldAgeDeltaE s
-         + _rOtherMatingDeltaE s, 
+         + _rOtherMatingDeltaE s,
     _rChildNetDeltaE = _rChildMetabolismDeltaE s
          + _rChildPopControlDeltaE s
          + _rChildEatDeltaE s
@@ -410,7 +411,7 @@ writeFmri w = do
 
 describeModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
 describeModels w = mapM_ (U.writeToLog . f) ms
-  where ms = toList . view decider $ view brain w
+  where ms = toList . modelMap . view (brain . decider) $ w
         f (l, r) = view name w ++ "'s decider model " ++ show l ++ "="
                      ++ pretty r
 
@@ -420,8 +421,7 @@ describeOutcomes
 describeOutcomes w = mapM_ (U.writeToLog . f)
   where f (r, l) = view name w ++ "'s predicted outcome of "
                      ++ show (view action r) ++ " is "
-                     ++ (printf "%.3f" . pm1ToDouble . fromJust
-                          . view outcome $ r)
+                     ++ (printf "%.3f" . pm1ToDouble . view outcome $ r)
                      ++ " from model " ++ show l
 
 chooseObject :: [Rational] -> ImageWain -> ImageDB -> IO Object
@@ -463,8 +463,7 @@ runAction Flirt = do
 --
 -- Ignore
 --
-runAction Ignore = do
-  (summary.rIgnoreCount) += 1
+runAction Ignore = (summary.rIgnoreCount) += 1
 
 --
 -- Utility functions
@@ -555,7 +554,7 @@ adjustPopControlDeltaE xs =
           = Stats.lookup "avg. child pop. control Δe" xs
     U.writeToLog $ "childPopControl=" ++ show childPopControl
 
-    let avgEnergyToBalance 
+    let avgEnergyToBalance
           = adultNet + childNet - adultPopControl - childPopControl
     U.writeToLog $ "avgEnergyToBalance=" ++ show avgEnergyToBalance
     let c = idealPopControlDeltaE idealPop pop avgEnergyToBalance
