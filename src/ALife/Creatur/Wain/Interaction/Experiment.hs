@@ -118,16 +118,14 @@ randomImageWain wainName u classifierSize deciderSize = do
                { _r0Range = view U.uClassifierR0Range u,
                  _dRange = view U.uClassifierDRange u }
   fc <- randomExponential fcp
-  classifierThreshold <- getRandom
+  classifierThreshold <- getRandomR (view U.uClassifierThresholdRange u)
   let c = buildClassifier fc classifierSize classifierThreshold
             ImageTweaker
   let fdp = RandomExponentialParams
               { _r0Range = view U.uDeciderR0Range u,
                 _dRange = view U.uDeciderDRange u }
   fd <- randomExponential fdp
-  -- xs <- replicateM (fromIntegral deciderSize) $
-  --        randomResponse 2 (numModels c) 4 (view U.uOutcomeRange u)
-  deciderThreshold <- getRandom
+  deciderThreshold <- getRandomR (view U.uDeciderThresholdRange u)
   cw <- (makeWeights . take 3) <$> getRandoms
   sw <- (makeWeights . take 3) <$> getRandoms
   rw <- (makeWeights . take 2) <$> getRandoms

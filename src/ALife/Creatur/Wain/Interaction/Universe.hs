@@ -58,8 +58,10 @@ module ALife.Creatur.Wain.Interaction.Universe
     uFlirtingDeltaE,
     uPopControlDeltaE,
     uOutcomeRange,
+    uClassifierThresholdRange,
     uClassifierR0Range,
     uClassifierDRange,
+    uDeciderThresholdRange,
     uDeciderR0Range,
     uDeciderDRange,
     uCheckpoints,
@@ -130,8 +132,10 @@ data Universe a = Universe
     _uFlirtingDeltaE :: Double,
     _uPopControlDeltaE :: Persistent Double,
     _uOutcomeRange :: (PM1Double, PM1Double),
+    _uClassifierThresholdRange :: (UIDouble,UIDouble),
     _uClassifierR0Range :: (UIDouble,UIDouble),
     _uClassifierDRange :: (UIDouble,UIDouble),
+    _uDeciderThresholdRange :: (UIDouble,UIDouble),
     _uDeciderR0Range :: (UIDouble,UIDouble),
     _uDeciderDRange :: (UIDouble,UIDouble),
     _uCheckpoints :: [CP.Checkpoint]
@@ -244,11 +248,17 @@ cFlirtingDeltaE = requiredSetting "flirtingDeltaE"
 cOutcomeRange :: Setting (PM1Double, PM1Double)
 cOutcomeRange = requiredSetting "outcomeRange"
 
+cClassifierThresholdRange :: Setting (UIDouble, UIDouble)
+cClassifierThresholdRange = requiredSetting "classifierThresholdRange"
+
 cClassifierR0Range :: Setting (UIDouble, UIDouble)
 cClassifierR0Range = requiredSetting "classifierR0Range"
 
 cClassifierDRange :: Setting (UIDouble, UIDouble)
 cClassifierDRange = requiredSetting "classifierDecayRange"
+
+cDeciderThresholdRange :: Setting (UIDouble, UIDouble)
+cDeciderThresholdRange = requiredSetting "deciderThresholdRange"
 
 cDeciderR0Range :: Setting (UIDouble, UIDouble)
 cDeciderR0Range = requiredSetting "deciderR0Range"
@@ -311,8 +321,10 @@ config2Universe getSetting =
       _uPopControlDeltaE
         = mkPersistent 0 (workDir ++ "/popControlDeltaE"),
       _uOutcomeRange = getSetting cOutcomeRange,
+      _uClassifierThresholdRange = getSetting cClassifierThresholdRange,
       _uClassifierR0Range = getSetting cClassifierR0Range,
       _uClassifierDRange = getSetting cClassifierDRange,
+      _uDeciderThresholdRange = getSetting cDeciderThresholdRange,
       _uDeciderR0Range = getSetting cDeciderR0Range,
       _uDeciderDRange = getSetting cDeciderDRange,
       _uCheckpoints = getSetting cCheckpoints
