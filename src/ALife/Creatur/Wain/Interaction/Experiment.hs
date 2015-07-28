@@ -30,17 +30,19 @@ module ALife.Creatur.Wain.Interaction.Experiment
 import ALife.Creatur (agentId, isAlive)
 import ALife.Creatur.Counter (current, increment)
 import ALife.Creatur.Task (checkPopSize)
-import ALife.Creatur.Wain.Brain (decider, Brain(..))
+import ALife.Creatur.Wain.Brain (predictor, Brain(..))
 import ALife.Creatur.Wain.Checkpoint (enforceAll)
 import ALife.Creatur.Wain.Classifier (buildClassifier)
-import ALife.Creatur.Wain.Decider (buildDecider)
+import ALife.Creatur.Wain.Muser (makeMuser)
+import ALife.Creatur.Wain.Predictor (buildPredictor)
 import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
   randomExponential, schemaQuality, modelMap, Label)
+import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
-import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
+import ALife.Creatur.Wain.Scenario (labels)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
@@ -111,7 +113,7 @@ randomImageWain
   :: RandomGen r
     => String -> U.Universe ImageWain -> Word16 -> Word16
       -> Rand r ImageWain
-randomImageWain wainName u classifierSize deciderSize = do
+randomImageWain wainName u classifierSize predictorSize = do
   let w = view U.uImageWidth u
   let h = view U.uImageHeight u
   let fcp = RandomExponentialParams
@@ -122,29 +124,28 @@ randomImageWain wainName u classifierSize deciderSize = do
   let c = buildClassifier fc classifierSize classifierThreshold
             ImageTweaker
   let fdp = RandomExponentialParams
-              { _r0Range = view U.uDeciderR0Range u,
-                _dRange = view U.uDeciderDRange u }
+              { _r0Range = view U.uPredictorR0Range u,
+                _dRange = view U.uPredictorDRange u }
   fd <- randomExponential fdp
-  deciderThreshold <- getRandomR (view U.uDeciderThresholdRange u)
+  predictorThreshold <- getRandomR (view U.uPredictorThresholdRange u)
   cw <- (makeWeights . take 3) <$> getRandoms
-  sw <- (makeWeights . take 3) <$> getRandoms
   rw <- (makeWeights . take 2) <$> getRandoms
-  let dr = buildDecider fd deciderSize deciderThreshold cw sw rw
+  let dr = buildPredictor fd predictorSize predictorThreshold cw rw
   hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
-  let b = Brain c dr hw
+  dOut <- getRandomR $ view U.uDefaultOutcomeRange u
+  dp <- getRandomR $ view U.uDepthRange u
+  let mr = makeMuser dOut dp
+  let b = Brain c mr dr hw
   dv <- getRandomR . view U.uDevotionRange $ u
   m <- getRandomR . view U.uMaturityRange $ u
   p <- getRandom
   bd <- getRandom
-  dOut <- getRandom
   let app = bigX w h
-  return $ buildWainAndGenerateGenome wainName app b dv m p bd dOut
+  return $ buildWainAndGenerateGenome wainName app b dv m p bd
 
 data Summary = Summary
   {
     _rPopSize :: Int,
-    _rOtherNovelty :: UIDouble,
-    _rOtherAdjustedNovelty :: Int,
     _rMetabolismDeltaE :: Double,
     _rChildMetabolismDeltaE :: Double,
     _rPopControlDeltaE :: Double,
@@ -176,8 +177,6 @@ initSummary :: Int -> Summary
 initSummary p = Summary
   {
     _rPopSize = p,
-    _rOtherNovelty = 0,
-    _rOtherAdjustedNovelty = 0,
     _rMetabolismDeltaE = 0,
     _rChildMetabolismDeltaE = 0,
     _rPopControlDeltaE = 0,
@@ -208,9 +207,6 @@ summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
     Stats.dStat "pop. size" (view rPopSize r),
-    Stats.dStat "novelty" (view rOtherNovelty r),
-    Stats.iStat "novelty (adj.)"
-      (view rOtherAdjustedNovelty r),
     Stats.dStat "adult metabolism Δe" (view rMetabolismDeltaE r),
     Stats.dStat "child metabolism Δe" (view rChildMetabolismDeltaE r),
     Stats.dStat "adult pop. control Δe" (view rPopControlDeltaE r),
@@ -362,40 +358,29 @@ chooseSubjectAction
 chooseSubjectAction = do
   a <- use subject
   obj <- use other
-  (objNovelty, objNoveltyAdj, r, a')
-    <- zoom universe $ chooseAction3 a obj
-  assign (summary.rOtherNovelty) objNovelty
-  assign (summary.rOtherAdjustedNovelty) objNoveltyAdj
+  (r, a') <- zoom universe $ chooseAction3 a obj
   assign subject a'
   return r
 
 chooseAction3
   :: ImageWain -> Object
     -> StateT (U.Universe ImageWain) IO
-        (UIDouble, Int, Response Action, ImageWain)
+        (Response Action, ImageWain)
 chooseAction3 w obj = do
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
-  whenM (use U.uShowDeciderModels) $ describeModels w
-  let (objLabel:_, scenarioLabel, r, w', xs, [objNovelty])
-        = chooseAction [objectAppearance obj] w
+  whenM (use U.uShowPredictorModels) $ describeModels w
+  let (_, rls, r, w') = chooseAction [objectAppearance obj] w
+  let objLabel = head $ view (scenario . labels) r
+  let scenarioLabel = fst . head $ rls
   whenM (use U.uGenFmris) (writeFmri w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
   U.writeToLog $ "To " ++ agentId w ++ ", "
-    ++ objectId obj ++ " has novelty " ++ show objNovelty
-    ++ " and best fits classifier model " ++ show objLabel
-  whenM (use U.uShowPredictions) $ describeOutcomes w xs
-  let objNoveltyAdj
-        = round $ uiToDouble objNovelty * fromIntegral (view age w)
-  U.writeToLog $ "To " ++ agentId w ++ ", "
-    ++ objectId obj ++ " has adjusted novelty " ++ show objNoveltyAdj
+    ++ objectId obj ++ " best fits classifier model " ++ show objLabel
+  whenM (use U.uShowPredictions) $ describeOutcomes w rls
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
     ++ " and chooses to " ++ show (view action r)
     ++ " based on response model " ++ show scenarioLabel
-  -- let modelsBefore = models $ view (brain . classifier) w
-  -- let modelsAfter = models $ view (brain . classifier) w'
-  -- U.writeToLog $ "DEBUG classifier model changes = "
-  --   ++ show (modelChanges modelsBefore modelsAfter)
-  return (objNovelty, objNoveltyAdj, r, w')
+  return (r, w')
 
 writeFmri :: ImageWain -> StateT (U.Universe ImageWain) IO ()
 writeFmri w = do
@@ -409,8 +394,8 @@ writeFmri w = do
 
 describeModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
 describeModels w = mapM_ (U.writeToLog . f) ms
-  where ms = toList . modelMap . view (brain . decider) $ w
-        f (l, r) = view name w ++ "'s decider model " ++ show l ++ "="
+  where ms = toList . modelMap . view (brain . predictor) $ w
+        f (l, r) = view name w ++ "'s predictor model " ++ show l ++ "="
                      ++ pretty r
 
 describeOutcomes

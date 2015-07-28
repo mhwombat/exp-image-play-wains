@@ -21,7 +21,7 @@ import ALife.Creatur.Wain.PersistentStatistics (clearStats)
 import ALife.Creatur.Wain.Statistics (Statistic, stats, summarise)
 import ALife.Creatur.Wain.Interaction.Universe (Universe(..),
   writeToLog, store, loadUniverse, uClassifierSizeRange,
-  uDeciderSizeRange, uInitialPopulationSize, uStatsFile)
+  uPredictorSizeRange, uInitialPopulationSize, uStatsFile)
 import Control.Lens
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (evalRandIO)
@@ -34,11 +34,11 @@ introduceRandomAgent name = do
   u <- get
   classifierSize
     <- liftIO . evalRandIO . getRandomR . view uClassifierSizeRange $ u
-  deciderSize
-    <- liftIO . evalRandIO . getRandomR . view uDeciderSizeRange $ u
+  predictorSize
+    <- liftIO . evalRandIO . getRandomR . view uPredictorSizeRange $ u
   agent
     <- liftIO . evalRandIO $
-        randomImageWain name u classifierSize deciderSize
+        randomImageWain name u classifierSize predictorSize
   -- Make the first generation a little hungry so they start learning
   -- immediately.
   let (agent', _, _) = adjustEnergy 0.8 agent
