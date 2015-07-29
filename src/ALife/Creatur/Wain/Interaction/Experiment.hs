@@ -42,7 +42,6 @@ import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
-import ALife.Creatur.Wain.Scenario (labels)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
@@ -369,17 +368,15 @@ chooseAction3
 chooseAction3 w obj = do
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
   whenM (use U.uShowPredictorModels) $ describeModels w
-  let (_, rls, r, w') = chooseAction [objectAppearance obj] w
-  let objLabel = head $ view (scenario . labels) r
-  let scenarioLabel = fst . head $ rls
+  let (cBMUs, _, pBMU, rls, r, w') = chooseAction [objectAppearance obj] w
   whenM (use U.uGenFmris) (writeFmri w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
   U.writeToLog $ "To " ++ agentId w ++ ", "
-    ++ objectId obj ++ " best fits classifier model " ++ show objLabel
+    ++ objectId obj ++ " best fits classifier model " ++ show (head cBMUs)
   whenM (use U.uShowPredictions) $ describeOutcomes w rls
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
     ++ " and chooses to " ++ show (view action r)
-    ++ " based on response model " ++ show scenarioLabel
+    ++ " based on response model " ++ show pBMU
   return (r, w')
 
 writeFmri :: ImageWain -> StateT (U.Universe ImageWain) IO ()

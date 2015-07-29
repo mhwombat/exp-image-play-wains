@@ -30,6 +30,7 @@ import ALife.Creatur.Genetics.Recombination (mutatePairedLists,
 import ALife.Creatur.Genetics.Reproduction.Sexual (Reproductive, Strand,
   produceGamete, build, makeOffspring)
 import qualified ALife.Creatur.Wain.Brain as B
+import qualified ALife.Creatur.Wain.Classifier as Cl
 import ALife.Creatur.Wain.GeneticSOM (Label, Tweaker, Pattern)
 import qualified ALife.Creatur.Wain.Response as R
 import ALife.Creatur.Wain.Statistics (Statistical, stats, iStat, dStat)
@@ -261,31 +262,30 @@ condition w = [ _energy w, 1 - _passion w, 1 - _boredom w,
 happiness :: Wain p t a -> UIDouble
 happiness w = B.happiness (_brain w) (condition w)
 
--- data Object p t a = DObject p String | AObject (Wain p t a)
-
--- -- | Returns the identity of an object that might be shown to a wain.
--- --   This should only be used for logging.
--- --   The wain should not have access to this information.
--- identity :: Object p t a -> String
--- identity (DObject _ s) = "Image " ++ s
--- identity (AObject a) = _name a
-
--- -- | Returns the appearance of an object that might be shown to a wain.
--- appearanceOf :: Object p t a -> p
--- appearanceOf (DObject img _) = img
--- appearanceOf (AObject a) = _appearance a
-
--- | Chooses a response based on the stimuli (input patterns).
---   Returns the chosen response, the updated wain, the responses it
---   considered (with outcome predictions), and the novelty of each
---   input pattern.
+-- | Chooses a response based on the stimuli (input patterns) and
+--   the wain's condition.
+--   Returns the classifier labels assigned to each input pattern,
+--   the classifier signature of each input pattern,
+--   the predictor model on which the response is based,
+--   the responses it considered (with outcome predictions filled in,
+--   and paired with predictor model labels),
+--   the chosen response, and the updated wain.
+--
+--   NOTE: that the response chosen might be a response modelled on
+--   a different scenario than the one we think we're in.
+--   I.e., @cBMUs@ may not equal @view (scenario . labels) r@.
+--   This might happen, for example, if the ideal response to the
+--   most likely scenario has a somewhat good outcome, but the ideal
+--   response to a somewhat likely alternative scenario has a really
+--   bad outcome. "I think that food is edible, but I'm not going to
+--   eat it just in case it's poisonous."
 chooseAction
   :: (Eq a, Enum a, Bounded a)
     => [p] -> Wain p t a
-      -> ([[(Label, UIDouble)]], [(R.Response a, Label)],
+      -> ([Label], [Cl.Signature], Label, [(R.Response a, Label)],
           R.Response a, Wain p t a)
-chooseAction ps w = (lds, rls, r, w')
-  where (lds, rls, r, b')
+chooseAction ps w = (cBMUs, lds, pBMU, rls, r, w')
+  where (cBMUs, lds, pBMU, rls, r, b')
           = B.chooseAction (_brain w) ps (condition w)
         w' = set brain b' w
 
