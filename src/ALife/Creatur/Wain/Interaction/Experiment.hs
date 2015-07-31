@@ -361,6 +361,8 @@ chooseSubjectAction = do
   a <- use subject
   obj <- use other
   (r, a') <- zoom universe $ chooseAction3 a obj
+  zoom universe . U.writeToLog $ "DEBUG Classifier counts: " ++ show (counterMap . view classifier . view brain $ a')
+  zoom universe . U.writeToLog $ "DEBUG Predictor counts: " ++ show (counterMap . view predictor . view brain $ a')
   assign subject a'
   return r
 
