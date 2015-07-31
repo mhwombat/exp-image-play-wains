@@ -1,5 +1,5 @@
 name:                interacting-wains
-version:             2.0
+version:             2.1
 synopsis:            Agent for categorising images.
 description:         ALife agent that works co-operatively with other
                      agents to develop a classification scheme for
@@ -22,7 +22,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/interacting-wains.git
-  tag:      2.0
+  tag:      2.1
 
 executable interaction-daemon
   main-is:          ALife/Creatur/Wain/Interaction/Daemon.hs
@@ -49,7 +49,7 @@ executable interaction-daemon
                     mtl ==2.2.*,
                     old-locale ==1.0.*,
                     random ==1.1.*,
-                    som ==8.1.*,
+                    som ==8.1.1,
                     split ==0.2.*,
                     text ==1.2.*,
                     time ==1.5.*,
@@ -83,7 +83,7 @@ executable interaction-init
                     mtl ==2.2.*,
                     old-locale ==1.0.*,
                     random ==1.1.*,
-                    som ==8.1.*,
+                    som ==8.1.1,
                     split ==0.2.*,
                     time ==1.5.*,
                     transformers ==0.4.*,
@@ -116,7 +116,7 @@ executable interaction-examine
                     mtl ==2.2.*,
                     old-locale ==1.0.*,
                     random ==1.1.*,
-                    som ==8.1.*,
+                    som ==8.1.1,
                     split ==0.2.*,
                     time ==1.5.*,
                     transformers ==0.4.*,
@@ -149,7 +149,7 @@ executable interaction-fmri
                     mtl ==2.2.*,
                     old-locale ==1.0.*,
                     random ==1.1.*,
-                    som ==8.1.*,
+                    som ==8.1.1,
                     split ==0.2.*,
                     time ==1.5.*,
                     transformers ==0.4.*,
@@ -184,7 +184,7 @@ executable interaction-photo
                     mtl ==2.2.*,
                     old-locale ==1.0.*,
                     random ==1.1.*,
-                    som ==8.1.*,
+                    som ==8.1.1,
                     split ==0.2.*,
                     time ==1.5.*,
                     transformers ==0.4.*,
@@ -218,7 +218,7 @@ Test-suite interaction-tests
                     MonadRandom ==0.4.*,
                     mtl ==2.2.*,
                     random ==1.1.*,
-                    som ==8.1.*,
+                    som ==8.1.1,
                     split ==0.2.*,
                     test-framework ==0.8.*,
                     test-framework-hunit ==0.3.*,
