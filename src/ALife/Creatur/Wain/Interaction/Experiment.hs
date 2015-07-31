@@ -361,8 +361,8 @@ chooseSubjectAction = do
   a <- use subject
   obj <- use other
   (r, a') <- zoom universe $ chooseAction3 a obj
-  zoom universe . U.writeToLog $ "DEBUG Classifier counts: " ++ show (counterMap . view classifier . view brain $ a')
-  zoom universe . U.writeToLog $ "DEBUG Predictor counts: " ++ show (counterMap . view predictor . view brain $ a')
+  zoom universe . U.writeToLog $ "DEBUG A Classifier counts: " ++ show (counterMap . view classifier . view brain $ a')
+  zoom universe . U.writeToLog $ "DEBUG A Predictor counts: " ++ show (counterMap . view predictor . view brain $ a')
   assign subject a'
   return r
 
@@ -374,6 +374,8 @@ chooseAction3 w obj = do
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
   whenM (use U.uShowPredictorModels) $ describeModels w
   let (cBMUs, _, pBMU, rls, r, w') = chooseAction [objectAppearance obj] w
+  U.writeToLog $ "DEBUG B Classifier counts: " ++ show (counterMap . view classifier . view brain $ w')
+  U.writeToLog $ "DEBUG B Predictor counts: " ++ show (counterMap . view predictor . view brain $ w')
   whenM (use U.uGenFmris) (writeFmri w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
   U.writeToLog $ "To " ++ agentId w ++ ", "
