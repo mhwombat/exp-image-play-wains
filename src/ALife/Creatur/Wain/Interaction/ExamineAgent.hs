@@ -15,6 +15,7 @@ module Main where
 
 import  ALife.Creatur.Wain.Interaction.Wain
 import ALife.Creatur.Wain.Brain
+import ALife.Creatur.Wain.Predictor (predictorQuality)
 import ALife.Creatur.Wain.Response
 import qualified ALife.Creatur.Wain.Scenario as Scenario
 import ALife.Creatur.Wain.GeneticSOM
@@ -59,12 +60,16 @@ examine a = do
   putStrLn $ "litter size: " ++ show (length . view litter $ a)
   putStrLn $ "counts=" ++ show (elems . counterMap . view classifier . view brain $ a)
   putStrLn $ "size: " ++ show (view wainSize a)
-  putStrLn $ "SQ: " ++ show (schemaQuality . view predictor . view brain $ a)
+  putStrLn $ "classifier SQ: " ++ show (schemaQuality . view classifier . view brain $ a)
+  putStrLn $ "predictor SQ: " ++ show (schemaQuality . view predictor . view brain $ a)
+  putStrLn $ "DSQ: " ++ show (predictorQuality . view predictor . view brain $ a)
   putStrLn $ "Number of classifier models: " ++ show (numModels . view classifier . view brain $ a)
   putStrLn $ "Classifier learning function " ++ show (view exponentialParams . view classifier . view brain $ a)
+  putStrLn $ "Classifier counts: " ++ show (counterMap . view classifier . view brain $ a)
   putStrLn $ "Number of predictor models: " ++ show (numModels . view predictor . view brain $ a)
   putStrLn $ "Predictor learning function " ++ show (view exponentialParams . view predictor . view brain $ a)
-  -- putStrLn "------------------------"
+  putStrLn $ "Predictor counts: " ++ show (counterMap . view predictor . view brain $ a)
+-- putStrLn "------------------------"
   -- putStrLn "Mental models of vectors"
   -- putStrLn "------------------------"
   -- mapM_ putStrLn $ concatMap (prettyAudioPattern 9) (toList . classifier . brain $ a)
