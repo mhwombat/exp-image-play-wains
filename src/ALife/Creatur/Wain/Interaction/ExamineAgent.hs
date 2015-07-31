@@ -26,7 +26,7 @@ import ALife.Creatur.Wain.PlusMinusOne
 import ALife.Creatur.Wain.UnitInterval
 import Control.Lens
 import Control.Monad.State
-import Data.Map.Strict (elems, toList)
+import Data.Map.Strict (toList)
 import System.Environment
 import Text.Printf (printf)
 
@@ -58,7 +58,6 @@ examine a = do
   putStrLn $ "total # children weaned: "
     ++ show (view childrenWeanedLifetime a)
   putStrLn $ "litter size: " ++ show (length . view litter $ a)
-  putStrLn $ "counts=" ++ show (elems . counterMap . view classifier . view brain $ a)
   putStrLn $ "size: " ++ show (view wainSize a)
   putStrLn $ "classifier SQ: " ++ show (schemaQuality . view classifier . view brain $ a)
   putStrLn $ "predictor SQ: " ++ show (schemaQuality . view predictor . view brain $ a)

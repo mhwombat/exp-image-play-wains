@@ -30,13 +30,13 @@ module ALife.Creatur.Wain.Interaction.Experiment
 import ALife.Creatur (agentId, isAlive)
 import ALife.Creatur.Counter (current, increment)
 import ALife.Creatur.Task (checkPopSize)
-import ALife.Creatur.Wain.Brain (predictor, Brain(..))
+import ALife.Creatur.Wain.Brain (classifier, predictor, Brain(..))
 import ALife.Creatur.Wain.Checkpoint (enforceAll)
 import ALife.Creatur.Wain.Classifier (buildClassifier)
 import ALife.Creatur.Wain.Muser (makeMuser)
 import ALife.Creatur.Wain.Predictor (buildPredictor)
 import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
-  randomExponential, schemaQuality, modelMap, Label)
+  randomExponential, schemaQuality, modelMap, counterMap, Label)
 import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
@@ -270,6 +270,8 @@ run' = do
     ++ "'s turn ----------"
   zoom universe . U.writeToLog $ "At beginning of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty (Stats.stats a)
+  zoom universe . U.writeToLog $ "DEBUG Classifier counts: " ++ show (counterMap . view classifier . view brain $ a)
+  zoom universe . U.writeToLog $ "DEBUG Predictor counts: " ++ show (counterMap . view predictor . view brain $ a)
   runMetabolism
   applyPopControl
   r <- chooseSubjectAction
@@ -291,6 +293,7 @@ run' = do
   agentStats <- ((Stats.stats a' ++) . summaryStats) <$> use summary
   zoom universe . U.writeToLog $ "At end of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty agentStats
+  zoom universe . U.writeToLog $ "DEBUG Classifier counts: " ++ show (counterMap . view classifier . view brain $ a')
   rsf <- use (universe . U.uRawStatsFile)
   zoom universe $ writeRawStats (agentId a) rsf agentStats
   sf <- use (universe . U.uStatsFile)
