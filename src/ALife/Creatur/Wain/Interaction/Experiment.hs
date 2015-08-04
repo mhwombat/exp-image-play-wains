@@ -30,13 +30,13 @@ module ALife.Creatur.Wain.Interaction.Experiment
 import ALife.Creatur (agentId, isAlive)
 import ALife.Creatur.Counter (current, increment)
 import ALife.Creatur.Task (checkPopSize)
-import ALife.Creatur.Wain.Brain (classifier, predictor, Brain(..))
+import ALife.Creatur.Wain.Brain (predictor, makeBrain)
 import ALife.Creatur.Wain.Checkpoint (enforceAll)
 import ALife.Creatur.Wain.Classifier (buildClassifier)
 import ALife.Creatur.Wain.Muser (makeMuser)
 import ALife.Creatur.Wain.Predictor (buildPredictor)
 import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
-  randomExponential, schemaQuality, modelMap, counterMap, Label)
+  randomExponential, schemaQuality, modelMap, Label)
 import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
@@ -134,7 +134,7 @@ randomImageWain wainName u classifierSize predictorSize = do
   dOut <- getRandomR $ view U.uDefaultOutcomeRange u
   dp <- getRandomR $ view U.uDepthRange u
   let mr = makeMuser dOut dp
-  let b = Brain c mr dr hw
+  let b = makeBrain c mr dr hw
   dv <- getRandomR . view U.uDevotionRange $ u
   m <- getRandomR . view U.uMaturityRange $ u
   p <- getRandom
@@ -270,8 +270,6 @@ run' = do
     ++ "'s turn ----------"
   zoom universe . U.writeToLog $ "At beginning of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty (Stats.stats a)
-  zoom universe . U.writeToLog $ "DEBUG Classifier counts: " ++ show (counterMap . view classifier . view brain $ a)
-  zoom universe . U.writeToLog $ "DEBUG Predictor counts: " ++ show (counterMap . view predictor . view brain $ a)
   runMetabolism
   applyPopControl
   r <- chooseSubjectAction
@@ -293,7 +291,6 @@ run' = do
   agentStats <- ((Stats.stats a' ++) . summaryStats) <$> use summary
   zoom universe . U.writeToLog $ "At end of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty agentStats
-  zoom universe . U.writeToLog $ "DEBUG Classifier counts: " ++ show (counterMap . view classifier . view brain $ a')
   rsf <- use (universe . U.uRawStatsFile)
   zoom universe $ writeRawStats (agentId a) rsf agentStats
   sf <- use (universe . U.uStatsFile)
@@ -350,7 +347,11 @@ runMetabolism = do
   cps <- use (universe . U.uEnergyCostPerByte)
   ccf <- use (universe . U.uChildCostFactor)
   let (a', adultCost, childCost) = applyMetabolismCost bms cps ccf a
-  zoom universe . U.writeToLog $ "bms=" ++ show bms ++ " cps=" ++ show cps ++ " adult size=" ++ show (view wainSize a) ++ " adult cost=" ++ show adultCost
+  zoom universe . U.writeToLog $ "bms=" ++ show bms
+    ++ " cps=" ++ show cps ++ " adult size=" ++ show (view wainSize a)
+    ++ " adult cost=" ++ show adultCost
+    ++ " adult energy after=" ++ show (view energy a')
+    ++ " alive=" ++ show (isAlive a')
   (summary . rMetabolismDeltaE) += adultCost
   (summary . rChildMetabolismDeltaE) += childCost
   assign subject a'
@@ -361,8 +362,6 @@ chooseSubjectAction = do
   a <- use subject
   obj <- use other
   (r, a') <- zoom universe $ chooseAction3 a obj
-  zoom universe . U.writeToLog $ "DEBUG A Classifier counts: " ++ show (counterMap . view classifier . view brain $ a')
-  zoom universe . U.writeToLog $ "DEBUG A Predictor counts: " ++ show (counterMap . view predictor . view brain $ a')
   assign subject a'
   return r
 
@@ -374,8 +373,6 @@ chooseAction3 w obj = do
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
   whenM (use U.uShowPredictorModels) $ describeModels w
   let (cBMUs, _, pBMU, rls, r, w') = chooseAction [objectAppearance obj] w
-  U.writeToLog $ "DEBUG B Classifier counts: " ++ show (counterMap . view classifier . view brain $ w')
-  U.writeToLog $ "DEBUG B Predictor counts: " ++ show (counterMap . view predictor . view brain $ w')
   whenM (use U.uGenFmris) (writeFmri w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
   U.writeToLog $ "To " ++ agentId w ++ ", "

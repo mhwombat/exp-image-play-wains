@@ -15,7 +15,6 @@ module Main where
 
 import  ALife.Creatur.Wain.Interaction.Wain
 import ALife.Creatur.Wain.Brain
-import ALife.Creatur.Wain.Predictor (predictorQuality)
 import ALife.Creatur.Wain.Response
 import qualified ALife.Creatur.Wain.Scenario as Scenario
 import ALife.Creatur.Wain.GeneticSOM
@@ -61,7 +60,7 @@ examine a = do
   putStrLn $ "size: " ++ show (view wainSize a)
   putStrLn $ "classifier SQ: " ++ show (schemaQuality . view classifier . view brain $ a)
   putStrLn $ "predictor SQ: " ++ show (schemaQuality . view predictor . view brain $ a)
-  putStrLn $ "DSQ: " ++ show (predictorQuality . view predictor . view brain $ a)
+  putStrLn $ "DSQ: " ++ show (decisionQuality . view brain $ a)
   putStrLn $ "Number of classifier models: " ++ show (numModels . view classifier . view brain $ a)
   putStrLn $ "Classifier learning function " ++ show (view exponentialParams . view classifier . view brain $ a)
   putStrLn $ "Classifier counts: " ++ show (counterMap . view classifier . view brain $ a)

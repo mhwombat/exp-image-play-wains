@@ -92,7 +92,7 @@ makeLenses ''Wain
 
 buildWain
   :: (Genetic p, Genetic t, Genetic a, Eq a, Tweaker t, p ~ Pattern t,
-    Serialize p, Serialize t, Serialize a)
+    Ord a, Serialize p, Serialize t, Serialize a)
     => String -> p -> B.Brain p t a -> UIDouble -> Word16 -> UIDouble
       -> UIDouble -> (Sequence, Sequence) -> Wain p t a
 buildWain n a b d m p bd g = set wainSize s w
@@ -115,7 +115,7 @@ buildWain n a b d m p bd g = set wainSize s w
 buildWainAndGenerateGenome
   :: (Genetic p, Genetic t, Genetic a,
     Serialize p, Serialize t, Serialize a,
-      Eq a, Tweaker t, p ~ Pattern t)
+      Eq a, Ord a, Tweaker t, p ~ Pattern t)
         => String -> p -> B.Brain p t a -> UIDouble -> Word16
           -> UIDouble -> UIDouble -> Wain p t a
 buildWainAndGenerateGenome n a b d m p bd = set genome (g,g) strawMan
@@ -126,7 +126,7 @@ buildWainAndGenerateGenome n a b d m p bd = set genome (g,g) strawMan
 --   produced as the result of mating.
 buildWainFromGenome
   :: (Genetic p, Genetic t, Genetic a, Diploid p, Diploid t, Diploid a,
-    Serialize p, Serialize t, Serialize a, Eq a, Tweaker t,
+    Serialize p, Serialize t, Serialize a, Eq a, Ord a, Tweaker t,
       p ~ Pattern t)
         => Bool -> String -> DiploidReader (Either [String] (Wain p t a))
 buildWainFromGenome truncateGenome wName = do
@@ -178,12 +178,12 @@ instance (Eq a, Ord a) =>
           ec = sum . map (view energy) $ _litter w
 
 instance (Serialize p, Serialize t, Serialize a, Eq a, Tweaker t,
-  p ~ Pattern t)
+  Ord a, p ~ Pattern t)
     => Serialize (Wain p t a)
 
 -- This implementation is useful for generating the genes in the
 -- initial population, and for testing
-instance (Genetic p, Genetic t, Genetic a, Eq a,
+instance (Genetic p, Genetic t, Genetic a, Eq a, Ord a,
   Serialize p, Serialize t, Serialize a, Tweaker t, p ~ Pattern t)
     => Genetic (Wain p t a) where
   put w = put (_appearance w)
@@ -205,7 +205,7 @@ instance (Genetic p, Genetic t, Genetic a, Eq a,
 
 -- This implementation is useful for testing
 instance (Diploid p, Diploid t, Diploid a,
-  Genetic p, Genetic t, Genetic a, Eq a,
+  Genetic p, Genetic t, Genetic a, Eq a, Ord a,
     Serialize p, Serialize t, Serialize a, Tweaker t, p ~ Pattern t)
       => Diploid (Wain p t a) where
   express x y = buildWain "" a b d m p bd ([],[])
@@ -223,7 +223,7 @@ instance Agent (Wain p t a) where
 instance (Genetic p, Genetic t, Genetic a,
   Diploid p, Diploid t, Diploid a,
     Serialize p, Serialize t, Serialize a,
-      Eq a, Tweaker t, p ~ Pattern t)
+      Eq a, Ord a, Tweaker t, p ~ Pattern t)
         => Reproductive (Wain p t a) where
   type Strand (Wain p t a) = Sequence
   produceGamete a =
@@ -280,7 +280,7 @@ happiness w = B.happiness (_brain w) (condition w)
 --   bad outcome. "I think that food is edible, but I'm not going to
 --   eat it just in case it's poisonous."
 chooseAction
-  :: (Eq a, Enum a, Bounded a)
+  :: (Eq a, Enum a, Bounded a, Ord a)
     => [p] -> Wain p t a
       -> ([Label], [Cl.Signature], Label, [(R.Response a, Label)],
           R.Response a, Wain p t a)
@@ -439,7 +439,7 @@ mate
   :: (RandomGen r, Diploid p, Diploid t, Diploid a,
     Genetic p, Genetic t, Genetic a,
       Serialize p, Serialize t, Serialize a,
-        Eq a, Tweaker t, p ~ Pattern t)
+        Eq a, Ord a, Tweaker t, p ~ Pattern t)
           => Wain p t a -> Wain p t a -> String
             -> Rand r ([Wain p t a], [String], Double, Double)
 mate a b babyName
@@ -453,7 +453,7 @@ mate'
   :: (RandomGen r, Diploid p, Diploid t, Diploid a,
     Genetic p, Genetic t, Genetic a,
       Serialize p, Serialize t, Serialize a,
-        Eq a, Tweaker t, p ~ Pattern t)
+        Eq a, Ord a, Tweaker t, p ~ Pattern t)
           => Wain p t a -> Wain p t a -> String
             -> Rand r ([Wain p t a], [String], Double, Double)
 mate' a b babyName = do
