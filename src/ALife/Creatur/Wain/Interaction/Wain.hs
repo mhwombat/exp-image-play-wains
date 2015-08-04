@@ -95,17 +95,27 @@ buildWain
     Ord a, Serialize p, Serialize t, Serialize a)
     => String -> p -> B.Brain p t a -> UIDouble -> Word16 -> UIDouble
       -> UIDouble -> (Sequence, Sequence) -> Wain p t a
-buildWain n a b d m p bd g = set wainSize s w
+buildWain wName wAppearance wBrain wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta g = set wainSize s w
   -- We first set the size to 0, then figure out what the size really
   -- is.
   where w = Wain
               {
-                _name=n, _appearance=a, _brain=b, _devotion=d,
-                _ageOfMaturity=m, _passionDelta=p, _boredomDelta=bd,
-                _energy=0, _passion=1, _boredom=1,
-                _age=0, _litter=[],
-                _childrenBorneLifetime=0, _childrenWeanedLifetime=0,
-                _genome=g, _wainSize=0
+                _name = wName,
+                _appearance = wAppearance,
+                _brain = wBrain,
+                _devotion = wDevotion,
+                _ageOfMaturity = wAgeOfMaturity,
+                _passionDelta = wPassionDelta,
+                _boredomDelta = wBoredomDelta,
+                _energy = 0,
+                _passion = 1,
+                _boredom = 1,
+                _age = 0,
+                _litter = [],
+                _childrenBorneLifetime = 0,
+                _childrenWeanedLifetime = 0,
+                _genome = g,
+                _wainSize = 0
               }
         s = BS.length . encode $ w
 
@@ -118,15 +128,15 @@ buildWainAndGenerateGenome
       Eq a, Ord a, Tweaker t, p ~ Pattern t)
         => String -> p -> B.Brain p t a -> UIDouble -> Word16
           -> UIDouble -> UIDouble -> Wain p t a
-buildWainAndGenerateGenome n a b d m p bd = set genome (g,g) strawMan
-  where strawMan = buildWain n a b d m p bd ([], [])
+buildWainAndGenerateGenome wName wAppearance wBrain wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta = set genome (g,g) strawMan
+  where strawMan = buildWain wName wAppearance wBrain wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta ([], [])
         g = write strawMan
 
 -- | Constructs a wain from its genome. This is used when a child is
 --   produced as the result of mating.
 buildWainFromGenome
   :: (Genetic p, Genetic t, Genetic a, Diploid p, Diploid t, Diploid a,
-    Serialize p, Serialize t, Serialize a, Eq a, Ord a, Tweaker t,
+    Serialize p, Serialize t, Serialize a, Ord a, Eq a, Tweaker t,
       p ~ Pattern t)
         => Bool -> String -> DiploidReader (Either [String] (Wain p t a))
 buildWainFromGenome truncateGenome wName = do
@@ -143,9 +153,6 @@ buildWainFromGenome truncateGenome wName = do
 
 deriving instance (Show p, Show t, Show a, Eq a)
     => Show (Wain p t a)
- -- where
- --  show (Wain n a b c g) = "Wain " ++ n ++ " (" ++ show a ++ ") ("
- --    ++ show b ++ ") (" ++ show c ++ ") (" ++ show g ++ ")"
 
 instance Record (Wain p t a) where
   key = view name
@@ -194,13 +201,13 @@ instance (Genetic p, Genetic t, Genetic a, Eq a, Ord a,
             >> put (_boredomDelta w)
   get = do
     g <- copy
-    a <- get
-    b <- get
-    d <- get
-    m <- get
-    p <- get
-    bd <- get
-    return $ buildWain "" <$> a <*> b <*> d <*> m <*> p <*> bd
+    wAppearance <- get
+    wBrain <- get
+    wDevotion <- get
+    wAgeOfMaturity <- get
+    wPassionDelta <- get
+    wBoredomDelta <- get
+    return $ buildWain "" <$> wAppearance <*> wBrain <*> wDevotion <*> wAgeOfMaturity <*> wPassionDelta <*> wBoredomDelta
                <*> pure (g, g)
 
 -- This implementation is useful for testing
@@ -278,7 +285,7 @@ happiness w = B.happiness (_brain w) (condition w)
 --   most likely scenario has a somewhat good outcome, but the ideal
 --   response to a somewhat likely alternative scenario has a really
 --   bad outcome. "I think that food is edible, but I'm not going to
---   eat it just in case it's poisonous."
+--   eat it just in case I've misidentified it and it's poisonous."
 chooseAction
   :: (Eq a, Enum a, Bounded a, Ord a)
     => [p] -> Wain p t a
@@ -295,7 +302,8 @@ chooseAction ps w = (cBMUs, lds, pBMU, rls, r, w')
 --   Returns the update wain (including litter), the energy deducted
 --   from the wain, and the total energy deducted from the litter.
 applyMetabolismCost
-  :: Double -> Double -> Double -> Wain p t a -> (Wain p t a, Double, Double)
+  :: Double -> Double -> Double -> Wain p t a
+    -> (Wain p t a, Double, Double)
 applyMetabolismCost baseCost costPerByte childCostFactor w
   = (set litter childrenAfter adultAfter, adultCost, childCost)
   where (adultAfter, adultCost)
@@ -314,7 +322,7 @@ applyMetabolismCost1 baseCost costPerByte factor w = (w', delta')
         delta = adultCost * factor
 
 -- | Adjusts the energy of a wain and its children.
---   Note: A wain's energy is capped to the range [0,1].
+--   NOTE: A wain's energy is capped to the range [0,1].
 adjustEnergy
   :: Double -> Wain p t a -> (Wain p t a, Double, Double)
 adjustEnergy delta w =
@@ -341,9 +349,14 @@ adjustChildrensEnergy delta w
 
 adjustEnergy1
   :: Double -> Wain p t a -> (Wain p t a, Double, Double)
-adjustEnergy1 delta w = (wAfter, delta', leftover)
+adjustEnergy1 delta w =
+  -- don't feed dead wains, but do feed newborns
+  if isAlive w || _age w == 0
+    then (wAfter, delta', leftover)
+    else (w, 0, delta)
   where eBefore = _energy w
-        eAfter = forceDoubleToUI $ uiToDouble (_energy w) + delta
+        eAfter = forceDoubleToUI . max 0 $
+                   uiToDouble (_energy w) + delta
         wAfter = set energy eAfter w
         delta' = uiToDouble eAfter - uiToDouble eBefore
         leftover = delta - delta'
@@ -365,7 +378,7 @@ adjustBoredom1 delta w = (wAfter, delta', leftover)
         leftover = delta - delta'
 
 -- | Adjusts the wain's passion by the genetically-determined amount.
---   Note: The passion is capped to the range [0,1]. The litter is not
+--   NOTE: The passion is capped to the range [0,1]. The litter is not
 --   affected.
 autoAdjustPassion :: Wain p t a -> Wain p t a
 autoAdjustPassion w = set passion p w
