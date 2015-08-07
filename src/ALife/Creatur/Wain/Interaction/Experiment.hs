@@ -30,14 +30,14 @@ module ALife.Creatur.Wain.Interaction.Experiment
 import ALife.Creatur (agentId, isAlive)
 import ALife.Creatur.Counter (current, increment)
 import ALife.Creatur.Task (checkPopSize)
-import ALife.Creatur.Wain.Brain (predictor, makeBrain)
+import ALife.Creatur.Wain.Brain (predictor, makeBrain, scenarioReport,
+  responseReport, decisionReport)
 import ALife.Creatur.Wain.Checkpoint (enforceAll)
-import ALife.Creatur.Wain.Classifier (buildClassifier)
+import qualified ALife.Creatur.Wain.Classifier as Cl
 import ALife.Creatur.Wain.Muser (makeMuser)
 import ALife.Creatur.Wain.Predictor (buildPredictor)
 import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
-  randomExponential, schemaQuality, modelMap, Label)
-import ALife.Creatur.Wain.PlusMinusOne (pm1ToDouble)
+  randomExponential, schemaQuality, modelMap)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
@@ -69,12 +69,12 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandomRs,
   getRandom, getRandoms, evalRandIO, fromList)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
-import Data.List (intercalate)
+import Data.List (intercalate, minimumBy)
 import Data.Map.Strict (toList)
+import Data.Ord (comparing)
 import Data.Word (Word16)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
-import Text.Printf (printf)
 
 data Object = IObject Image String | AObject ImageWain
 
@@ -120,7 +120,7 @@ randomImageWain wainName u classifierSize predictorSize = do
                  _dRange = view U.uClassifierDRange u }
   fc <- randomExponential fcp
   classifierThreshold <- getRandomR (view U.uClassifierThresholdRange u)
-  let c = buildClassifier fc classifierSize classifierThreshold
+  let c = Cl.buildClassifier fc classifierSize classifierThreshold
             ImageTweaker
   let fdp = RandomExponentialParams
               { _r0Range = view U.uPredictorR0Range u,
@@ -372,16 +372,24 @@ chooseAction3
 chooseAction3 w obj = do
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
   whenM (use U.uShowPredictorModels) $ describeModels w
-  let (cBMUs, _, pBMU, rls, r, w') = chooseAction [objectAppearance obj] w
+  let (lds, sps, rplos, aos, r, w')
+        = chooseAction [objectAppearance obj] w
+  let objLabel = analyseClassification lds
   whenM (use U.uGenFmris) (writeFmri w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
-  U.writeToLog $ "To " ++ agentId w ++ ", "
-    ++ objectId obj ++ " best fits classifier model " ++ show (head cBMUs)
-  whenM (use U.uShowPredictions) $ describeOutcomes w rls
-  U.writeToLog $ agentId w ++ " sees " ++ objectId obj
-    ++ " and chooses to " ++ show (view action r)
-    ++ " based on response model " ++ show pBMU
+  whenM (use U.uShowPredictions) $ do
+    mapM_ U.writeToLog $ scenarioReport sps
+    mapM_ U.writeToLog $ responseReport rplos
+    mapM_ U.writeToLog $ decisionReport aos
+  U.writeToLog $ "Wain sees " ++ objectId obj ++ ", classifies it as "
+    ++ show objLabel ++ " and chooses to " ++ show (view action r)
+    ++ " predicting the outcome " ++ show (view outcome r)
   return (r, w')
+
+analyseClassification
+  :: [[(Cl.Label, Cl.Difference)]] -> Cl.Label
+analyseClassification ldss = l
+  where ((l, _):_) = map (minimumBy (comparing snd)) ldss
 
 writeFmri :: ImageWain -> StateT (U.Universe ImageWain) IO ()
 writeFmri w = do
@@ -398,15 +406,6 @@ describeModels w = mapM_ (U.writeToLog . f) ms
   where ms = toList . modelMap . view (brain . predictor) $ w
         f (l, r) = view name w ++ "'s predictor model " ++ show l ++ "="
                      ++ pretty r
-
-describeOutcomes
-  :: ImageWain -> [(Response Action, Label)]
-    -> StateT (U.Universe ImageWain) IO ()
-describeOutcomes w = mapM_ (U.writeToLog . f)
-  where f (r, l) = view name w ++ "'s predicted outcome of "
-                     ++ show (view action r) ++ " is "
-                     ++ (printf "%.3f" . pm1ToDouble . view outcome $ r)
-                     ++ " from model " ++ show l
 
 chooseObject :: [Rational] -> ImageWain -> ImageDB -> IO Object
 chooseObject freqs w db = do

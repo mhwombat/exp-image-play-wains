@@ -31,8 +31,12 @@ import ALife.Creatur.Genetics.Reproduction.Sexual (Reproductive, Strand,
   produceGamete, build, makeOffspring)
 import qualified ALife.Creatur.Wain.Brain as B
 import qualified ALife.Creatur.Wain.Classifier as Cl
-import ALife.Creatur.Wain.GeneticSOM (Label, Tweaker, Pattern)
+import ALife.Creatur.Wain.GeneticSOM (Tweaker, Pattern)
+import ALife.Creatur.Wain.PlusMinusOne (PM1Double)
+import qualified ALife.Creatur.Wain.Predictor as P
 import qualified ALife.Creatur.Wain.Response as R
+import ALife.Creatur.Wain.Scenario (Condition, Scenario)
+import ALife.Creatur.Wain.Statistician (Probability)
 import ALife.Creatur.Wain.Statistics (Statistical, stats, iStat, dStat)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble,
   doubleToUI, forceDoubleToUI)
@@ -92,7 +96,7 @@ makeLenses ''Wain
 
 buildWain
   :: (Genetic p, Genetic t, Genetic a, Eq a, Tweaker t, p ~ Pattern t,
-    Ord a, Serialize p, Serialize t, Serialize a)
+    Serialize p, Serialize t, Serialize a, Ord a)
     => String -> p -> B.Brain p t a -> UIDouble -> Word16 -> UIDouble
       -> UIDouble -> (Sequence, Sequence) -> Wain p t a
 buildWain wName wAppearance wBrain wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta g = set wainSize s w
@@ -129,7 +133,8 @@ buildWainAndGenerateGenome
         => String -> p -> B.Brain p t a -> UIDouble -> Word16
           -> UIDouble -> UIDouble -> Wain p t a
 buildWainAndGenerateGenome wName wAppearance wBrain wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta = set genome (g,g) strawMan
-  where strawMan = buildWain wName wAppearance wBrain wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta ([], [])
+  where strawMan = buildWain wName wAppearance wBrain wDevotion
+                     wAgeOfMaturity wPassionDelta wBoredomDelta ([], [])
         g = write strawMan
 
 -- | Constructs a wain from its genome. This is used when a child is
@@ -184,8 +189,8 @@ instance (Eq a, Ord a) =>
     where e = _energy w
           ec = sum . map (view energy) $ _litter w
 
-instance (Serialize p, Serialize t, Serialize a, Eq a, Tweaker t,
-  Ord a, p ~ Pattern t)
+instance (Serialize p, Serialize t, Serialize a, Eq a, Ord a,
+  Tweaker t, p ~ Pattern t)
     => Serialize (Wain p t a)
 
 -- This implementation is useful for generating the genes in the
@@ -215,13 +220,15 @@ instance (Diploid p, Diploid t, Diploid a,
   Genetic p, Genetic t, Genetic a, Eq a, Ord a,
     Serialize p, Serialize t, Serialize a, Tweaker t, p ~ Pattern t)
       => Diploid (Wain p t a) where
-  express x y = buildWain "" a b d m p bd ([],[])
-    where a = express (_appearance x)    (_appearance y)
-          b = express (_brain x)         (_brain y)
-          d = express (_devotion x)      (_devotion y)
-          m = express (_ageOfMaturity x) (_ageOfMaturity y)
-          p = express (_passionDelta x)  (_passionDelta y)
-          bd = express (_boredomDelta x)  (_boredomDelta y)
+  express x y = buildWain "" wAppearance wBrain wDevotion
+                  wAgeOfMaturity wPassionDelta wBoredomDelta ([],[])
+    where wAppearance     = express (_appearance x)    (_appearance y)
+          wBrain          = express (_brain x)         (_brain y)
+          wDevotion       = express (_devotion x)      (_devotion y)
+          wAgeOfMaturity  = express (_ageOfMaturity x)
+                                                      (_ageOfMaturity y)
+          wPassionDelta   = express (_passionDelta x)  (_passionDelta y)
+          wBoredomDelta   = express (_boredomDelta x)  (_boredomDelta y)
 
 instance Agent (Wain p t a) where
   agentId = view name
@@ -259,7 +266,7 @@ mature a = _age a >= _ageOfMaturity a
 
 -- | Returns the wain's current condition. This is useful for making
 --   decisions.
-condition :: Wain p t a -> [UIDouble]
+condition :: Wain p t a -> Condition
 condition w = [ _energy w, 1 - _passion w, 1 - _boredom w,
                 if l > 0 then 1 else 0 ]
   where l = length . _litter $ w
@@ -289,10 +296,13 @@ happiness w = B.happiness (_brain w) (condition w)
 chooseAction
   :: (Eq a, Enum a, Bounded a, Ord a)
     => [p] -> Wain p t a
-      -> ([Label], [Cl.Signature], Label, [(R.Response a, Label)],
+      -> ([[(Cl.Label, Cl.Difference)]],
+          [(Scenario, Probability)],
+          [(R.Response a, Probability, P.Label, PM1Double)],
+          [(a, PM1Double)],
           R.Response a, Wain p t a)
-chooseAction ps w = (cBMUs, lds, pBMU, rls, r, w')
-  where (cBMUs, lds, pBMU, rls, r, b')
+chooseAction ps w = (lds, sps, rplos, aos, r, w')
+  where (lds, sps, rplos, aos, r, b')
           = B.chooseAction (_brain w) ps (condition w)
         w' = set brain b' w
 
