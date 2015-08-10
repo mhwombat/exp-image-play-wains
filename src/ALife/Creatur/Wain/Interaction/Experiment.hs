@@ -57,7 +57,7 @@ import ALife.Creatur.Wain.Interaction.Wain (Wain,
   adjustEnergy, autoAdjustBoredom, adjustBoredom, autoAdjustPassion,
   reflect, mate, litter, brain, energy, childEnergy, age, wainSize,
   happiness)
-import ALife.Creatur.Persistent (getPS, putPS)
+import ALife.Creatur.Persistent (putPS)
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats)
 import ALife.Creatur.Wain.Statistics (summarise)
@@ -271,7 +271,7 @@ run' = do
   zoom universe . U.writeToLog $ "At beginning of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty (Stats.stats a)
   runMetabolism
-  applyPopControl
+  -- applyPopControl
   r <- chooseSubjectAction
   happinessBefore <- happiness <$> use subject
   runAction (view action r)
@@ -452,11 +452,11 @@ runAction Ignore = (summary.rIgnoreCount) += 1
 -- Utility functions
 --
 
-applyPopControl :: StateT Experiment IO ()
-applyPopControl = do
-  deltaE <- zoom (universe . U.uPopControlDeltaE) getPS
-  adjustSubjectEnergy deltaE rPopControlDeltaE
-    rChildPopControlDeltaE
+-- applyPopControl :: StateT Experiment IO ()
+-- applyPopControl = do
+--   deltaE <- zoom (universe . U.uPopControlDeltaE) getPS
+--   adjustSubjectEnergy deltaE rPopControlDeltaE
+--     rChildPopControlDeltaE
 
 flirt :: StateT Experiment IO ()
 flirt = do
