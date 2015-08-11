@@ -43,7 +43,6 @@ import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
-import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..))
 import qualified ALife.Creatur.Wain.Interaction.FMRI as F
@@ -51,12 +50,11 @@ import ALife.Creatur.Wain.Interaction.Image (Image, bigX)
 import ALife.Creatur.Wain.Interaction.ImageTweaker (ImageTweaker(..))
 import ALife.Creatur.Wain.Interaction.ImageDB (ImageDB, anyImage)
 import qualified ALife.Creatur.Wain.Interaction.Universe as U
-import ALife.Creatur.Wain.Interaction.Wain (Wain,
-  buildWainAndGenerateGenome, appearance, name, chooseAction, incAge,
-  applyMetabolismCost, weanMatureChildren, pruneDeadChildren,
-  adjustEnergy, autoAdjustBoredom, adjustBoredom, autoAdjustPassion,
-  reflect, mate, litter, brain, energy, childEnergy, age, wainSize,
-  happiness)
+import ALife.Creatur.Wain (Wain, buildWainAndGenerateGenome, appearance,
+  name, chooseAction, incAge, applyMetabolismCost, weanMatureChildren,
+  pruneDeadChildren, adjustEnergy, autoAdjustBoredom, adjustBoredom,
+  autoAdjustPassion, reflect, mate, litter, brain, energy, childEnergy,
+  age, wainSize, happiness)
 import ALife.Creatur.Persistent (putPS)
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats)
@@ -66,8 +64,8 @@ import Control.Conditional (whenM)
 import Control.Lens hiding (universe)
 import Control.Monad (when, unless)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandomRs,
-  getRandom, getRandoms, evalRandIO, fromList)
+import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandom,
+  getRandoms, evalRandIO, fromList)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.List (intercalate, minimumBy)
 import Data.Map.Strict (toList)
@@ -130,7 +128,9 @@ randomImageWain wainName u classifierSize predictorSize = do
   cw <- (makeWeights . take 3) <$> getRandoms
   rw <- (makeWeights . take 2) <$> getRandoms
   let dr = buildPredictor fd predictorSize predictorThreshold cw rw
-  hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
+  -- TODO: Allow a range of random weights
+  -- hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
+  let hw = makeWeights [7, 3, 1]
   dOut <- getRandomR $ view U.uDefaultOutcomeRange u
   dp <- getRandomR $ view U.uDepthRange u
   let mr = makeMuser dOut dp

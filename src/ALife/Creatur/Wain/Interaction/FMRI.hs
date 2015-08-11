@@ -21,10 +21,10 @@ module ALife.Creatur.Wain.Interaction.FMRI
   ) where
 
 import ALife.Creatur.Wain.Brain (classifier)
-import ALife.Creatur.Wain.GeneticSOM (Label, modelMap)
+import ALife.Creatur.Wain.GeneticSOM (modelMap)
 import ALife.Creatur.Wain.Interaction.Image
 import ALife.Creatur.Wain.Interaction.ImageTweaker
-import ALife.Creatur.Wain.Interaction.Wain
+import ALife.Creatur.Wain
 import Control.Lens hiding ((#), none)
 import Data.Colour.SRGB
 import Data.List.Split

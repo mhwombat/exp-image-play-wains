@@ -16,7 +16,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import  ALife.Creatur.Wain.Interaction.Wain
+import ALife.Creatur.Wain
 import ALife.Creatur.Wain.Interaction.Experiment
 import ALife.Creatur.Wain.Interaction.Image
 import ALife.Creatur.Wain.Interaction.Universe

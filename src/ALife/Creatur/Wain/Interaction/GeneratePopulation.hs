@@ -15,7 +15,7 @@
 import ALife.Creatur (agentId)
 import ALife.Creatur.Wain.Interaction.Experiment (ImageWain,
   randomImageWain, printStats)
-import  ALife.Creatur.Wain.Interaction.Wain (adjustEnergy)
+import ALife.Creatur.Wain (adjustEnergy)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.PersistentStatistics (clearStats)
 import ALife.Creatur.Wain.Statistics (Statistic, stats, summarise)

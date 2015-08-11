@@ -13,7 +13,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Main where
 
-import  ALife.Creatur.Wain.Interaction.Wain
+import ALife.Creatur.Wain
 import ALife.Creatur.Wain.Brain
 import ALife.Creatur.Wain.Response
 import qualified ALife.Creatur.Wain.Scenario as Scenario

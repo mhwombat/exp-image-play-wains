@@ -16,7 +16,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import  ALife.Creatur.Wain.Interaction.Wain
+import ALife.Creatur.Wain
 import ALife.Creatur.Wain.Brain
 import ALife.Creatur.Wain.GeneticSOM
 import ALife.Creatur.Wain.Interaction.FMRI
