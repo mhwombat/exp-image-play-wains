@@ -24,7 +24,13 @@ module ALife.Creatur.Wain.Interaction.Experiment
     finishRound,
     schemaQuality,
     printStats,
-    idealPopControlDeltaE -- exported for testing only
+    -- items below are only exported for testing
+    idealPopControlDeltaE,
+    Object(..),
+    isImage,
+    objectId,
+    objectNum,
+    objectAppearance
   ) where
 
 import ALife.Creatur (agentId, isAlive)
@@ -104,13 +110,12 @@ addIfAgent :: Object -> [ImageWain] -> [ImageWain]
 addIfAgent (IObject _ _) xs = xs
 addIfAgent (AObject a) xs = a:xs
 
-type ImageWain = Wain Image ImageTweaker  Action
+type ImageWain = Wain Image ImageTweaker Action
 
 randomImageWain
   :: RandomGen r
-    => String -> U.Universe ImageWain -> Word16 -> Word16
-      -> Rand r ImageWain
-randomImageWain wainName u classifierSize predictorSize = do
+    => String -> U.Universe ImageWain -> Word16 -> Rand r ImageWain
+randomImageWain wainName u classifierSize = do
   let w = view U.uImageWidth u
   let h = view U.uImageHeight u
   let fcp = RandomExponentialParams
@@ -127,6 +132,7 @@ randomImageWain wainName u classifierSize predictorSize = do
   predictorThreshold <- getRandomR (view U.uPredictorThresholdRange u)
   cw <- (makeWeights . take 3) <$> getRandoms
   rw <- (makeWeights . take 2) <$> getRandoms
+  let predictorSize = classifierSize * 4
   let dr = buildPredictor fd predictorSize predictorThreshold cw rw
   -- TODO: Allow a range of random weights
   -- hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
