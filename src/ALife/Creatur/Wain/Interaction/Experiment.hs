@@ -136,7 +136,7 @@ randomImageWain wainName u classifierSize = do
   let dr = buildPredictor fd predictorSize predictorThreshold cw rw
   -- TODO: Allow a range of random weights
   -- hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
-  let hw = makeWeights [7, 3, 1]
+  let hw = makeWeights [0.7, 0.3, 0.1]
   dOut <- getRandomR $ view U.uDefaultOutcomeRange u
   dp <- getRandomR $ view U.uDepthRange u
   let mr = makeMuser dOut dp
