@@ -56,7 +56,7 @@ endRoundProgram = use uStatsFile >>= finishRound
 main :: IO ()
 main = do
   u <- loadUniverse
-  let message = "creatur-wains-iomha-" ++ showVersion version
+  let message = "interacting-wains-" ++ showVersion version
           ++ ", compiled with " ++ ALife.Creatur.Wain.programVersion
           ++ ", " ++ ALife.Creatur.programVersion
           ++ ", configuration=" ++ show u
