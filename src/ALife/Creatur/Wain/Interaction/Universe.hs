@@ -48,6 +48,7 @@ module ALife.Creatur.Wain.Interaction.Universe
     uInitialPopulationSize,
     uIdealPopulationSize,
     uPopulationAllowedRange,
+    uPopControl,
     uFrequencies,
     uBaseMetabolismDeltaE,
     uEnergyCostPerByte,
@@ -122,6 +123,7 @@ data Universe a = Universe
     _uInitialPopulationSize :: Int,
     _uIdealPopulationSize :: Int,
     _uPopulationAllowedRange :: (Int, Int),
+    _uPopControl :: Bool,
     _uFrequencies :: [Rational],
     _uBaseMetabolismDeltaE :: Double,
     _uEnergyCostPerByte :: Double,
@@ -221,6 +223,9 @@ cIdealPopulationSize = requiredSetting "idealPopSize"
 cPopulationAllowedRange :: Setting (Double, Double)
 cPopulationAllowedRange = requiredSetting "popAllowedRange"
 
+cPopControl :: Setting Bool
+cPopControl = requiredSetting "popControl"
+
 cFrequencies :: Setting [Rational]
 cFrequencies = requiredSetting "frequencies"
 
@@ -310,6 +315,7 @@ config2Universe getSetting =
       _uInitialPopulationSize = p0,
       _uIdealPopulationSize = pIdeal,
       _uPopulationAllowedRange = (a', b'),
+      _uPopControl = getSetting cPopControl,
       _uFrequencies = getSetting cFrequencies,
       _uBaseMetabolismDeltaE = getSetting cBaseMetabolismDeltaE,
       _uEnergyCostPerByte = getSetting cEnergyCostPerByte,
