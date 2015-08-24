@@ -34,10 +34,10 @@ module ALife.Creatur.Wain.Interaction.Experiment
   ) where
 
 import ALife.Creatur (agentId, isAlive)
-import ALife.Creatur.Counter (current, increment)
+-- import ALife.Creatur.Counter (current, increment)
 import ALife.Creatur.Task (checkPopSize)
-import ALife.Creatur.Wain.Brain (predictor, makeBrain, scenarioReport,
-  responseReport, decisionReport)
+import ALife.Creatur.Wain.Brain (classifier, predictor, makeBrain,
+  scenarioReport, responseReport, decisionReport)
 import ALife.Creatur.Wain.Checkpoint (enforceAll)
 import qualified ALife.Creatur.Wain.Classifier as Cl
 import ALife.Creatur.Wain.Muser (makeMuser)
@@ -51,8 +51,8 @@ import ALife.Creatur.Wain.Response (Response, action,
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..))
-import qualified ALife.Creatur.Wain.Interaction.FMRI as F
-import ALife.Creatur.Wain.Interaction.Image (Image, bigX)
+-- import qualified ALife.Creatur.Wain.Interaction.FMRI as F
+import ALife.Creatur.Wain.Interaction.Image (Image, bigX, base64encode)
 import ALife.Creatur.Wain.Interaction.ImageTweaker (ImageTweaker(..))
 import ALife.Creatur.Wain.Interaction.ImageDB (ImageDB, anyImage)
 import qualified ALife.Creatur.Wain.Interaction.Universe as U
@@ -378,11 +378,12 @@ chooseAction3
         (Response Action, ImageWain)
 chooseAction3 w obj = do
   U.writeToLog $ agentId w ++ " sees " ++ objectId obj
-  whenM (use U.uShowPredictorModels) $ describeModels w
+  whenM (use U.uShowPredictorModels) $ describePredictorModels w
   let (lds, sps, rplos, aos, r, w')
         = chooseAction [objectAppearance obj] w
   let objLabel = analyseClassification lds
-  whenM (use U.uGenFmris) (writeFmri w)
+  -- whenM (use U.uGenFmris) (writeFmri w)
+  whenM (use U.uGenFmris) (describeClassifierModels w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
   whenM (use U.uShowPredictions) $ do
     mapM_ U.writeToLog $ scenarioReport sps
@@ -398,20 +399,27 @@ analyseClassification
 analyseClassification ldss = l
   where ((l, _):_) = map (minimumBy (comparing snd)) ldss
 
-writeFmri :: ImageWain -> StateT (U.Universe ImageWain) IO ()
-writeFmri w = do
-  t <- U.currentTime
-  k <- zoom U.uFmriCounter current
-  zoom U.uFmriCounter increment
-  d <- use U.uFmriDir
-  let f = d ++ "/" ++ view name w ++ '_' : show t ++ "_" ++ show k ++ ".png"
-  U.writeToLog $ "Writing FMRI to " ++ f
-  liftIO . F.writeFmri w $ f
+-- writeFmri :: ImageWain -> StateT (U.Universe ImageWain) IO ()
+-- writeFmri w = do
+--   t <- U.currentTime
+--   k <- zoom U.uFmriCounter current
+--   zoom U.uFmriCounter increment
+--   d <- use U.uFmriDir
+--   let f = d ++ "/" ++ view name w ++ '_' : show t ++ "_" ++ show k ++ ".png"
+--   U.writeToLog $ "Writing FMRI to " ++ f
+--   liftIO . F.writeFmri w $ f
 
-describeModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
-describeModels w = mapM_ (U.writeToLog . f) ms
+describeClassifierModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
+describeClassifierModels w = mapM_ (U.writeToLog . f) ms
+  where ms = toList . modelMap . view (brain . classifier) $ w
+        f (l, r) = view name w ++ "'s classifier model "
+                     ++ show l ++ ": <img src='data:image/png;base64,"
+                     ++ base64encode r ++ "'/>"
+
+describePredictorModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
+describePredictorModels w = mapM_ (U.writeToLog . f) ms
   where ms = toList . modelMap . view (brain . predictor) $ w
-        f (l, r) = view name w ++ "'s predictor model " ++ show l ++ "="
+        f (l, r) = view name w ++ "'s predictor model " ++ show l ++ ": "
                      ++ pretty r
 
 chooseObject :: [Rational] -> ImageWain -> ImageDB -> IO Object

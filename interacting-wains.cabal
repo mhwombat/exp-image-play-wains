@@ -1,5 +1,5 @@
 name:                interacting-wains
-version:             2.7
+version:             2.8
 synopsis:            Agent for categorising images.
 description:         ALife agent that works co-operatively with other
                      agents to develop a classification scheme for
@@ -22,7 +22,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/interacting-wains.git
-  tag:      2.7
+  tag:      2.8
 
 executable interaction-daemon
   main-is:          ALife/Creatur/Wain/Interaction/Daemon.hs
@@ -39,8 +39,6 @@ executable interaction-daemon
                     containers ==0.5.*,
                     creatur ==5.9.*,
                     creatur-wains ==7.6.*,
-                    diagrams-lib ==1.3.*,
-                    diagrams-svg ==1.3.*,
                     directory ==1.2.*,
                     filepath ==1.4.*,
                     hdaemonize ==0.5.*,
