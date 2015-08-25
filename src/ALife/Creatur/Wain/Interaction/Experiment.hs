@@ -60,7 +60,7 @@ import ALife.Creatur.Wain (Wain, buildWainAndGenerateGenome, appearance,
   name, chooseAction, incAge, applyMetabolismCost, weanMatureChildren,
   pruneDeadChildren, adjustEnergy, autoAdjustBoredom, adjustBoredom,
   autoAdjustPassion, reflect, mate, litter, brain, energy, childEnergy,
-  age, wainSize, happiness)
+  boredom, passion, age, wainSize, happiness)
 import ALife.Creatur.Persistent (putPS, getPS)
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats)
@@ -165,6 +165,10 @@ data Summary = Summary
     _rOtherMatingDeltaE :: Double,
     _rNetDeltaE :: Double,
     _rChildNetDeltaE :: Double,
+    _rDeltaEToReflectOn :: Double,
+    _rDeltaBToReflectOn :: Double,
+    _rDeltaPToReflectOn :: Double,
+    _rDeltaHToReflectOn :: Double,
     _rErr :: Double,
     _rBirthCount :: Int,
     _rWeanCount :: Int,
@@ -196,6 +200,10 @@ initSummary p = Summary
     _rOtherMatingDeltaE = 0,
     _rNetDeltaE = 0,
     _rChildNetDeltaE = 0,
+    _rDeltaEToReflectOn = 0,
+    _rDeltaBToReflectOn = 0,
+    _rDeltaPToReflectOn = 0,
+    _rDeltaHToReflectOn = 0,
     _rErr = 0,
     _rBirthCount = 0,
     _rWeanCount = 0,
@@ -226,6 +234,10 @@ summaryStats r =
     Stats.dStat "other adult mating Δe" (view rOtherMatingDeltaE r),
     Stats.dStat "adult net Δe" (view rNetDeltaE r),
     Stats.dStat "child net Δe" (view rChildNetDeltaE r),
+    Stats.dStat "Δe to reflect on" (view rDeltaEToReflectOn r),
+    Stats.dStat "Δb to reflect on" (view rDeltaBToReflectOn r),
+    Stats.dStat "Δp to reflect on" (view rDeltaPToReflectOn r),
+    Stats.dStat "Δh to reflect on" (view rDeltaHToReflectOn r),
     Stats.dStat "err" (view rErr r),
     Stats.iStat "bore" (view rBirthCount r),
     Stats.iStat "weaned" (view rWeanCount r),
@@ -280,9 +292,9 @@ run' = do
   autoPopControl <- use (universe . U.uPopControl)
   when autoPopControl applyPopControl
   r <- chooseSubjectAction
-  happinessBefore <- happiness <$> use subject
+  wainBeforeAction <- use subject
   runAction (view action r)
-  letSubjectReflect happinessBefore r
+  letSubjectReflect wainBeforeAction r
   autoAdjustSubjectPassion
   autoAdjustSubjectBoredom
   subject %= incAge
@@ -398,16 +410,6 @@ analyseClassification
   :: [[(Cl.Label, Cl.Difference)]] -> Cl.Label
 analyseClassification ldss = l
   where ((l, _):_) = map (minimumBy (comparing snd)) ldss
-
--- writeFmri :: ImageWain -> StateT (U.Universe ImageWain) IO ()
--- writeFmri w = do
---   t <- U.currentTime
---   k <- zoom U.uFmriCounter current
---   zoom U.uFmriCounter increment
---   d <- use U.uFmriDir
---   let f = d ++ "/" ++ view name w ++ '_' : show t ++ "_" ++ show k ++ ".png"
---   U.writeToLog $ "Writing FMRI to " ++ f
---   liftIO . F.writeFmri w $ f
 
 describeClassifierModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
 describeClassifierModels w = mapM_ (U.writeToLog . f) ms
@@ -610,15 +612,30 @@ autoAdjustSubjectPassion
 autoAdjustSubjectPassion = subject %= autoAdjustPassion
 
 letSubjectReflect
-  :: UIDouble -> Response Action -> StateT Experiment IO ()
-letSubjectReflect happinessBefore r = do
+  :: ImageWain -> Response Action -> StateT Experiment IO ()
+letSubjectReflect wainBefore r = do
   x <- use subject
   p <- objectAppearance <$> use other
+  let energyBefore = view energy wainBefore
+  let boredomBefore = view boredom wainBefore
+  let passionBefore = view passion wainBefore
+  let happinessBefore = happiness wainBefore
+  energyAfter <- use (subject.energy)
+  boredomAfter <- use (subject.boredom)
+  passionAfter <- use (subject.passion)
   happinessAfter <- happiness <$> use subject
+  let deltaH = uiToDouble happinessAfter - uiToDouble happinessBefore
+  assign (summary . rDeltaEToReflectOn)
+    (uiToDouble energyAfter - uiToDouble energyBefore)
+  assign (summary . rDeltaBToReflectOn)
+    (uiToDouble boredomAfter - uiToDouble boredomBefore)
+  assign (summary . rDeltaPToReflectOn)
+    (uiToDouble passionAfter - uiToDouble passionBefore)
+  assign (summary . rDeltaHToReflectOn) deltaH
   let (x', err) = reflect [p] r x
   assign subject x'
   assign (summary . rErr) err
-  when (happinessAfter < happinessBefore) $ do
+  when (deltaH < 0) $ do
     b <- use other
     zoom universe . U.writeToLog $
       agentId x ++ "'s choice to " ++ show (view action r) ++ " (with) "
