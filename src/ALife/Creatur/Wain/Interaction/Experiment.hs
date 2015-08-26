@@ -48,8 +48,7 @@ import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
-import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble,
-  doubleToUI)
+import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..))
 -- import qualified ALife.Creatur.Wain.Interaction.FMRI as F
@@ -579,25 +578,13 @@ adjustPopControlDeltaE xs =
     U.writeToLog $ "pop=" ++ show pop
     idealPop <- use U.uIdealPopulationSize
     U.writeToLog $ "ideal pop=" ++ show idealPop
-    let (Just avgAdultEnergy)
-          = Stats.lookup "avg. adult energy" xs
-    U.writeToLog $ "avgAdultEnergy=" ++ show avgAdultEnergy
     let c = idealPopControlDeltaE idealPop pop
-              (doubleToUI avgAdultEnergy)
     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
     zoom U.uPopControlDeltaE $ putPS c
 
-idealPopControlDeltaE :: Int -> Int -> UIDouble -> Double
-idealPopControlDeltaE idealPop pop eAvg
-  | idealPop == 0 = error "idealPop == 0"
-  | pop == 0      = error "pop == 0"
-  | pop > idealPop && eAvg > 0.8
-      = (0.8 - uiToDouble eAvg)
-          * (fromIntegral pop / fromIntegral idealPop)
-  | pop < idealPop && eAvg < 0.8
-      = (0.8 - uiToDouble eAvg)
-          * (fromIntegral idealPop / fromIntegral pop)
-  | otherwise     = 0
+idealPopControlDeltaE :: Int -> Int -> Double
+idealPopControlDeltaE idealPop pop
+  = fromIntegral (idealPop - pop) / fromIntegral pop
 
 totalEnergy :: StateT Experiment IO (Double, Double)
 totalEnergy = do
