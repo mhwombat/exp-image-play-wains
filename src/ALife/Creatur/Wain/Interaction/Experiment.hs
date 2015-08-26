@@ -48,7 +48,8 @@ import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
-import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
+import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble,
+  doubleToUI)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..))
 -- import qualified ALife.Creatur.Wain.Interaction.FMRI as F
@@ -533,6 +534,43 @@ finishRound f = do
   (a, b) <- use U.uPopulationAllowedRange
   checkPopSize (a, b)
 
+-- adjustPopControlDeltaE
+--   :: [Stats.Statistic] -> StateT (U.Universe ImageWain) IO ()
+-- adjustPopControlDeltaE xs =
+--   unless (null xs) $ do
+--     pop <- U.popSize
+--     U.writeToLog $ "pop=" ++ show pop
+--     idealPop <- use U.uIdealPopulationSize
+--     U.writeToLog $ "ideal pop=" ++ show idealPop
+
+--     let (Just adultNet) = Stats.lookup "avg. adult net Δe" xs
+--     U.writeToLog $ "adultNet=" ++ show adultNet
+--     let (Just childNet) = Stats.lookup "avg. child net Δe" xs
+--     U.writeToLog $ "childNet=" ++ show childNet
+
+--     let (Just adultPopControl)
+--           = Stats.lookup "avg. adult pop. control Δe" xs
+--     U.writeToLog $ "adultPopControl=" ++ show adultPopControl
+--     let (Just childPopControl)
+--           = Stats.lookup "avg. child pop. control Δe" xs
+--     U.writeToLog $ "childPopControl=" ++ show childPopControl
+
+--     let avgEnergyToBalance
+--           = adultNet + childNet - adultPopControl - childPopControl
+--     U.writeToLog $ "avgEnergyToBalance=" ++ show avgEnergyToBalance
+--     let c = idealPopControlDeltaE idealPop pop avgEnergyToBalance
+--     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
+--     zoom U.uPopControlDeltaE $ putPS c
+
+-- idealPopControlDeltaE :: Int -> Int -> Double -> Double
+-- idealPopControlDeltaE idealPop pop e
+--   | idealPop == 0 = error "idealPop == 0"
+--   | pop == 0      = error "pop == 0"
+--   | otherwise    = -f*e
+--   where f = if e < 0
+--               then fromIntegral idealPop / fromIntegral pop
+--               else fromIntegral pop / fromIntegral idealPop
+
 adjustPopControlDeltaE
   :: [Stats.Statistic] -> StateT (U.Universe ImageWain) IO ()
 adjustPopControlDeltaE xs =
@@ -541,34 +579,25 @@ adjustPopControlDeltaE xs =
     U.writeToLog $ "pop=" ++ show pop
     idealPop <- use U.uIdealPopulationSize
     U.writeToLog $ "ideal pop=" ++ show idealPop
-
-    let (Just adultNet) = Stats.lookup "avg. adult net Δe" xs
-    U.writeToLog $ "adultNet=" ++ show adultNet
-    let (Just childNet) = Stats.lookup "avg. child net Δe" xs
-    U.writeToLog $ "childNet=" ++ show childNet
-
-    let (Just adultPopControl)
-          = Stats.lookup "avg. adult pop. control Δe" xs
-    U.writeToLog $ "adultPopControl=" ++ show adultPopControl
-    let (Just childPopControl)
-          = Stats.lookup "avg. child pop. control Δe" xs
-    U.writeToLog $ "childPopControl=" ++ show childPopControl
-
-    let avgEnergyToBalance
-          = adultNet + childNet - adultPopControl - childPopControl
-    U.writeToLog $ "avgEnergyToBalance=" ++ show avgEnergyToBalance
-    let c = idealPopControlDeltaE idealPop pop avgEnergyToBalance
+    let (Just avgAdultEnergy)
+          = Stats.lookup "avg. adult energy" xs
+    U.writeToLog $ "avgAdultEnergy=" ++ show avgAdultEnergy
+    let c = idealPopControlDeltaE idealPop pop
+              (doubleToUI avgAdultEnergy)
     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
     zoom U.uPopControlDeltaE $ putPS c
 
-idealPopControlDeltaE :: Int -> Int -> Double -> Double
-idealPopControlDeltaE idealPop pop e
+idealPopControlDeltaE :: Int -> Int -> UIDouble -> Double
+idealPopControlDeltaE idealPop pop eAvg
   | idealPop == 0 = error "idealPop == 0"
   | pop == 0      = error "pop == 0"
-  | otherwise    = -f*e
-  where f = if e < 0
-              then fromIntegral idealPop / fromIntegral pop
-              else fromIntegral pop / fromIntegral idealPop
+  | pop > idealPop && eAvg > 0.5
+      = (0.5 - uiToDouble eAvg)
+          * (fromIntegral pop / fromIntegral idealPop)
+  | pop < idealPop && eAvg < 0.5
+      = (0.5 - uiToDouble eAvg)
+          * (fromIntegral idealPop / fromIntegral pop)
+  | otherwise     = 0
 
 totalEnergy :: StateT Experiment IO (Double, Double)
 totalEnergy = do
