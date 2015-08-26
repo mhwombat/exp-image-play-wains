@@ -591,11 +591,11 @@ idealPopControlDeltaE :: Int -> Int -> UIDouble -> Double
 idealPopControlDeltaE idealPop pop eAvg
   | idealPop == 0 = error "idealPop == 0"
   | pop == 0      = error "pop == 0"
-  | pop > idealPop && eAvg > 0.5
-      = (0.5 - uiToDouble eAvg)
+  | pop > idealPop && eAvg > 0.8
+      = (0.8 - uiToDouble eAvg)
           * (fromIntegral pop / fromIntegral idealPop)
-  | pop < idealPop && eAvg < 0.5
-      = (0.5 - uiToDouble eAvg)
+  | pop < idealPop && eAvg < 0.8
+      = (0.8 - uiToDouble eAvg)
           * (fromIntegral idealPop / fromIntegral pop)
   | otherwise     = 0
 

@@ -29,7 +29,7 @@ prop_idealPopControlDeltaE_counteracts_overpopulation
   :: Positive Int -> Positive Int -> Positive Int -> UIDouble -> Property
 prop_idealPopControlDeltaE_counteracts_overpopulation
   (Positive pIdeal) (Positive deltaP) (Positive deltaP2) e
-    = e > 0.5 ==> ec1 < 0 && ec2 < 0 && ec2 < ec1
+    = e > 0.8 ==> ec1 < 0 && ec2 < 0 && ec2 < ec1
   where p1 = pIdeal + deltaP
         p2 = p1 + deltaP2
         ec1 = idealPopControlDeltaE pIdeal p1 e
@@ -39,7 +39,7 @@ prop_idealPopControlDeltaE_counteracts_underpopulation
   :: Positive Int -> Positive Int -> Positive Int -> UIDouble -> Property
 prop_idealPopControlDeltaE_counteracts_underpopulation
   (Positive p1) (Positive deltaP) (Positive deltaP2) e
-    = e < 0.5 ==> ec1 > 0 && ec2 > 0 && ec2 < ec1
+    = e < 0.8 ==> ec1 > 0 && ec2 > 0 && ec2 < ec1
   where p2 = p1 + deltaP
         pIdeal = p2 + deltaP2
         ec1 = idealPopControlDeltaE pIdeal p1 e
@@ -49,7 +49,7 @@ prop_overpopulated_environment_gets_harsher_as_wains_learn
   :: Positive Int -> Positive Int -> UIDouble -> UIDouble -> Property
 prop_overpopulated_environment_gets_harsher_as_wains_learn
   (Positive pIdeal) (Positive deltaP) e1 e2
-    = 0.5 < e1 && e1 < e2 ==> ec1 < 0 && ec2 < 0 && ec2 < ec1
+    = 0.8 < e1 && e1 < e2 ==> ec1 < 0 && ec2 < 0 && ec2 < ec1
   where p = pIdeal + deltaP
         ec1 = idealPopControlDeltaE pIdeal p e1
         ec2 = idealPopControlDeltaE pIdeal p e2
@@ -58,7 +58,7 @@ prop_underpopulated_environment_gets_harsher_as_wains_learn
   :: Positive Int -> Positive Int -> UIDouble -> UIDouble -> Property
 prop_underpopulated_environment_gets_harsher_as_wains_learn
   (Positive p) (Positive deltaP) e1 e2
-    = e1 < e2 && e2 < 0.5 ==> ec1 > 0 && ec2 > 0 && ec2 < ec1
+    = e1 < e2 && e2 < 0.8 ==> ec1 > 0 && ec2 > 0 && ec2 < ec1
   where pIdeal = p + deltaP
         ec1 = idealPopControlDeltaE pIdeal p e1
         ec2 = idealPopControlDeltaE pIdeal p e2
