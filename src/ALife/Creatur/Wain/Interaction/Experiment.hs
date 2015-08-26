@@ -401,9 +401,10 @@ chooseAction3 w obj = do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos
     mapM_ U.writeToLog $ decisionReport aos
-  U.writeToLog $ "Wain sees " ++ objectId obj ++ ", classifies it as "
-    ++ show objLabel ++ " and chooses to " ++ show (view action r)
-    ++ " predicting the outcome " ++ show (view outcome r)
+  U.writeToLog $  agentId w ++ " sees " ++ objectId obj
+    ++ ", classifies it as " ++ show objLabel ++ " and chooses to "
+    ++ show (view action r) ++ " predicting the outcome "
+    ++ show (view outcome r)
   return (r, w')
 
 analyseClassification
