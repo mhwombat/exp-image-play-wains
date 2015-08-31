@@ -102,7 +102,7 @@ objectEnergy :: Object -> UIDouble
 objectEnergy (IObject _ _) = 0
 objectEnergy (AObject a) = view energy a
 
-objectChildEnergy :: Object -> UIDouble
+objectChildEnergy :: Object -> Double
 objectChildEnergy (IObject _ _) = 0
 objectChildEnergy (AObject a) = childEnergy a
 
@@ -534,43 +534,6 @@ finishRound f = do
   (a, b) <- use U.uPopulationAllowedRange
   checkPopSize (a, b)
 
--- adjustPopControlDeltaE
---   :: [Stats.Statistic] -> StateT (U.Universe ImageWain) IO ()
--- adjustPopControlDeltaE xs =
---   unless (null xs) $ do
---     pop <- U.popSize
---     U.writeToLog $ "pop=" ++ show pop
---     idealPop <- use U.uIdealPopulationSize
---     U.writeToLog $ "ideal pop=" ++ show idealPop
-
---     let (Just adultNet) = Stats.lookup "avg. adult net Δe" xs
---     U.writeToLog $ "adultNet=" ++ show adultNet
---     let (Just childNet) = Stats.lookup "avg. child net Δe" xs
---     U.writeToLog $ "childNet=" ++ show childNet
-
---     let (Just adultPopControl)
---           = Stats.lookup "avg. adult pop. control Δe" xs
---     U.writeToLog $ "adultPopControl=" ++ show adultPopControl
---     let (Just childPopControl)
---           = Stats.lookup "avg. child pop. control Δe" xs
---     U.writeToLog $ "childPopControl=" ++ show childPopControl
-
---     let avgEnergyToBalance
---           = adultNet + childNet - adultPopControl - childPopControl
---     U.writeToLog $ "avgEnergyToBalance=" ++ show avgEnergyToBalance
---     let c = idealPopControlDeltaE idealPop pop avgEnergyToBalance
---     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
---     zoom U.uPopControlDeltaE $ putPS c
-
--- idealPopControlDeltaE :: Int -> Int -> Double -> Double
--- idealPopControlDeltaE idealPop pop e
---   | idealPop == 0 = error "idealPop == 0"
---   | pop == 0      = error "pop == 0"
---   | otherwise    = -f*e
---   where f = if e < 0
---               then fromIntegral idealPop / fromIntegral pop
---               else fromIntegral pop / fromIntegral idealPop
-
 adjustPopControlDeltaE
   :: [Stats.Statistic] -> StateT (U.Universe ImageWain) IO ()
 adjustPopControlDeltaE xs =
@@ -579,20 +542,22 @@ adjustPopControlDeltaE xs =
     U.writeToLog $ "pop=" ++ show pop
     idealPop <- use U.uIdealPopulationSize
     U.writeToLog $ "ideal pop=" ++ show idealPop
-    let c = idealPopControlDeltaE idealPop pop
+    energyToAddWain <- use U.uEnergyToAddWain
+    U.writeToLog $ "energy to add one wain=" ++ show energyToAddWain
+    let c = idealPopControlDeltaE idealPop pop energyToAddWain
     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
     zoom U.uPopControlDeltaE $ putPS c
 
-idealPopControlDeltaE :: Int -> Int -> Double
-idealPopControlDeltaE idealPop pop
-  = fromIntegral (idealPop - pop) / fromIntegral pop
+idealPopControlDeltaE :: Int -> Int -> Double -> Double
+idealPopControlDeltaE idealPop pop energyToAddWain
+  = energyToAddWain*fromIntegral (idealPop - pop) / fromIntegral pop
 
 totalEnergy :: StateT Experiment IO (Double, Double)
 totalEnergy = do
   a <- fmap uiToDouble $ view energy <$> use subject
   b <- fmap uiToDouble $ objectEnergy <$> use other
-  d <- fmap uiToDouble $ childEnergy <$> use subject
-  e <- fmap uiToDouble $ objectChildEnergy <$> use other
+  d <- childEnergy <$> use subject
+  e <- objectChildEnergy <$> use other
   return (a + b, d + e)
 
 printStats :: [[Stats.Statistic]] -> StateT (U.Universe ImageWain) IO ()
