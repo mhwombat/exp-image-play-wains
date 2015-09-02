@@ -13,6 +13,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
+import ALife.Creatur.Util (shuffle)
 import ALife.Creatur.Wain
 import ALife.Creatur.Wain.Classifier (buildClassifier)
 import ALife.Creatur.Wain.Predictor (buildPredictor)
@@ -33,12 +34,14 @@ import ALife.Creatur.Wain.UnitInterval (uiToDouble)
 import ALife.Creatur.Wain.Weights (makeWeights)
 import Control.Lens
 import Control.Monad (foldM)
+import Control.Monad.Random (evalRandIO)
 import qualified Data.Map.Strict as M
 import Data.List (minimumBy)
 import Data.Ord (comparing)
 import Diagrams.Backend.SVG
 import Diagrams.Prelude hiding (view)
 import System.Directory
+import System.FilePath.Posix (takeFileName)
 
 interactionDeltaE :: [Double]
 interactionDeltaE=[1, 0.8, 0.6, 0.3, 0.2, 0.1, 0, -0.1, -0.2, -0.3, -0.05]
@@ -68,12 +71,12 @@ testWain = w'
         wPassionDelta = 0
         wBoredomDelta = 0
         wClassifier = buildClassifier ec n 0.13 ImageTweaker
-        n = 25
+        n = 15
         wMuser = makeMuser 0 2
         wPredictor = buildPredictor ep (n*4) 0.1 cw rw
         wHappinessWeights = makeWeights [1, 0, 0]
-        ec = ExponentialParams 0.2 0.0001
-        ep = ExponentialParams 0.1 0.0001
+        ec = ExponentialParams 0.2 0.001
+        ep = ExponentialParams 0.1 0.001
         cw = makeWeights [1, 0, 0]
         rw = makeWeights [0.9, 0.1]
         w = buildWainAndGenerateGenome wName wAppearance wBrain
@@ -109,6 +112,9 @@ tryOne w obj = do
   if deltaH < 0
     then putStrLn " was wrong"
     else putStrLn " was correct"
+  if interactionDeltaE !! objectNum obj >= 0
+    then putStrLn $ "Edible - " ++ show a
+    else putStrLn $ "Poisonous - " ++ show a
   let (wainAfterReflection, err) = reflect [objectAppearance obj] r wainRewarded
   putStrLn $ "err=" ++ show err
   -- keep the wain's energy constant
@@ -142,14 +148,19 @@ describePredictorModels w = mapM_ (putStrLn . f) ms
 dir :: String
 dir = "/home/eamybut/mnist/testData/"
 
+readDirAndShuffle :: FilePath -> IO [FilePath]
+readDirAndShuffle d = do
+  files <- map (d ++) . drop 2 <$> getDirectoryContents d
+  evalRandIO $ shuffle files
+
 readImage2 :: FilePath -> IO Object
 readImage2 f = do
-  img <- readImage (dir ++ f)
-  return $ IObject img f
+  img <- readImage f
+  return $ IObject img (takeFileName f)
 
 main :: IO ()
 main = do
-  files <- take 1000 . drop 2 <$> getDirectoryContents dir
+  files <- take 1000 . drop 2 <$> readDirAndShuffle dir
   imgs <- mapM readImage2 files
   w <- foldM tryOne testWain imgs
   putStrLn "test complete"

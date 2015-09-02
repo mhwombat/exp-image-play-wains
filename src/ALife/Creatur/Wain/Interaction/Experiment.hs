@@ -277,6 +277,7 @@ run (me:w2:xs) = do
             $ view subject e' : view weanlings e'
   U.writeToLog $
     "Modified agents: " ++ show (map agentId modifiedAgents)
+  reportAnyDeaths modifiedAgents
   return modifiedAgents
 run _ = error "too few wains"
 
@@ -632,3 +633,9 @@ writeRawStats n f xs = do
   t <- U.currentTime
   liftIO . appendFile f $
     "time=" ++ show t ++ ",agent=" ++ n ++ ',':raw xs ++ "\n"
+
+reportAnyDeaths :: [ImageWain] -> StateT (U.Universe ImageWain) IO ()
+reportAnyDeaths ws = mapM_ f ws
+  where f w = when (not . isAlive $ w) $
+                U.writeToLog
+                  (agentId w ++ " dead at age " ++ show (view age w))
