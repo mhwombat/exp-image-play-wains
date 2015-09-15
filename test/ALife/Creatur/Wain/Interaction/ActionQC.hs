@@ -16,7 +16,7 @@ module ALife.Creatur.Wain.Interaction.ActionQC
   ) where
 
 import ALife.Creatur.Wain.Interaction.Action (Action)
-import ALife.Creatur.Wain.Interaction.TestUtils (prop_serialize_round_trippable,
+import ALife.Creatur.Wain.TestUtils (prop_serialize_round_trippable,
   prop_genetic_round_trippable, prop_diploid_identity)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)

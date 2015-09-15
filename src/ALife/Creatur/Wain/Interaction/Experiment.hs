@@ -25,42 +25,35 @@ module ALife.Creatur.Wain.Interaction.Experiment
     schemaQuality,
     printStats,
     -- items below are only exported for testing
-    idealPopControlDeltaE,
-    Object(..),
-    isImage,
-    objectId,
-    objectNum,
-    objectAppearance
+    idealPopControlDeltaE
   ) where
 
 import ALife.Creatur (agentId, isAlive)
 -- import ALife.Creatur.Counter (current, increment)
 import ALife.Creatur.Task (checkPopSize)
-import ALife.Creatur.Wain.Brain (classifier, predictor, makeBrain,
-  scenarioReport, responseReport, decisionReport)
+import qualified ALife.Creatur.Wain as W
+import ALife.Creatur.Wain.Brain (makeBrain, scenarioReport,
+  responseReport, decisionReport)
 import ALife.Creatur.Wain.Checkpoint (enforceAll)
 import qualified ALife.Creatur.Wain.Classifier as Cl
 import ALife.Creatur.Wain.Muser (makeMuser)
 import ALife.Creatur.Wain.Predictor (buildPredictor)
 import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
-  randomExponential, schemaQuality, modelMap)
+  randomExponential, schemaQuality)
+import qualified ALife.Creatur.Wain.Object as O
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcome, scenario)
-import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
+import ALife.Creatur.Wain.UnitInterval (uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..), numActions)
 -- import qualified ALife.Creatur.Wain.Interaction.FMRI as F
-import ALife.Creatur.Wain.Interaction.Image (Image, bigX, base64encode)
-import ALife.Creatur.Wain.Interaction.ImageTweaker (ImageTweaker(..))
-import ALife.Creatur.Wain.Interaction.ImageDB (ImageDB, anyImage)
+import ALife.Creatur.Wain.Image (bigX)
+import ALife.Creatur.Wain.ImageTweaker (ImageTweaker(..))
+import ALife.Creatur.Wain.ImageDB (ImageDB, anyImage)
+import qualified ALife.Creatur.Wain.ImageWain as IW
 import qualified ALife.Creatur.Wain.Interaction.Universe as U
-import ALife.Creatur.Wain (Wain, buildWainAndGenerateGenome, appearance,
-  name, chooseAction, incAge, applyMetabolismCost, weanMatureChildren,
-  pruneDeadChildren, adjustEnergy, autoAdjustBoredom, adjustBoredom,
-  autoAdjustPassion, reflect, mate, litter, brain, energy, childEnergy,
-  boredom, passion, age, wainSize, happiness)
 import ALife.Creatur.Persistent (putPS, getPS)
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats)
@@ -70,52 +63,22 @@ import Control.Conditional (whenM)
 import Control.Lens hiding (universe)
 import Control.Monad (when, unless)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandom,
-  getRandoms, evalRandIO, fromList)
+import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandoms,
+  evalRandIO, fromList)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.List (intercalate, minimumBy)
-import Data.Map.Strict (toList)
 import Data.Ord (comparing)
 import Data.Word (Word16)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
 
-data Object = IObject Image String | AObject ImageWain
-
-isImage :: Object -> Bool
-isImage (IObject _ _) = True
-isImage (AObject _) = False
-
-objectId :: Object -> String
-objectId (IObject _ s) = "Image " ++ s
-objectId (AObject a) = agentId a
-
-objectNum :: Object -> Int
-objectNum (IObject _ s) = read [head s]
-objectNum (AObject _) = 10
-
-objectAppearance :: Object -> Image
-objectAppearance (IObject img _) = img
-objectAppearance (AObject a) = view appearance a
-
-objectEnergy :: Object -> UIDouble
-objectEnergy (IObject _ _) = 0
-objectEnergy (AObject a) = view energy a
-
-objectChildEnergy :: Object -> Double
-objectChildEnergy (IObject _ _) = 0
-objectChildEnergy (AObject a) = childEnergy a
-
-addIfAgent :: Object -> [ImageWain] -> [ImageWain]
-addIfAgent (IObject _ _) xs = xs
-addIfAgent (AObject a) xs = a:xs
-
-type ImageWain = Wain Image ImageTweaker Action
+type ImageWain = IW.ImageWain Action
+type Object = O.Object Action
 
 randomImageWain
   :: RandomGen r
     => String -> U.Universe ImageWain -> Word16 -> Rand r ImageWain
-randomImageWain wainName u classifierSize = do
+randomImageWain wName u classifierSize = do
   let w = view U.uImageWidth u
   let h = view U.uImageHeight u
   let fcp = RandomExponentialParams
@@ -140,13 +103,14 @@ randomImageWain wainName u classifierSize = do
   dOut <- getRandomR $ view U.uDefaultOutcomeRange u
   dp <- getRandomR $ view U.uDepthRange u
   let mr = makeMuser dOut dp
-  let b = makeBrain c mr dr hw
-  dv <- getRandomR . view U.uDevotionRange $ u
-  m <- getRandomR . view U.uMaturityRange $ u
-  p <- getRandom
-  bd <- getRandom
-  let app = bigX w h
-  return $ buildWainAndGenerateGenome wainName app b dv m p bd
+  let wBrain = makeBrain c mr dr hw
+  wDevotion <- getRandomR . view U.uDevotionRange $ u
+  wAgeOfMaturity <- getRandomR . view U.uMaturityRange $ u
+  wPassionDelta <- getRandomR . view U.uBoredomDeltaRange $ u
+  wBoredomDelta <- getRandomR . view U.uPassionDeltaRange $ u
+  let wAppearance = bigX w h
+  return $ W.buildWainAndGenerateGenome wName wAppearance wBrain
+    wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta
 
 data Summary = Summary
   {
@@ -260,6 +224,20 @@ data Experiment = Experiment
   }
 makeLenses ''Experiment
 
+-- TODO: Is there a more lens-y way to do this? Maybe can combine a
+-- prism and a lens.
+otherWain :: Lens' Experiment ImageWain
+otherWain = lens getWain setWain
+  where
+    getWain :: Experiment -> ImageWain
+    getWain = O.objectToWain . _other
+
+    setWain :: Experiment -> ImageWain -> Experiment
+    setWain e w = e { _other = O.AObject w }
+
+report :: String -> StateT Experiment IO ()
+report = zoom universe . U.writeToLog
+
 run :: [ImageWain] -> StateT (U.Universe ImageWain) IO [ImageWain]
 run (me:w2:xs) = do
   when (null xs) $ U.writeToLog "WARNING: Last wain standing!"
@@ -273,7 +251,7 @@ run (me:w2:xs) = do
                        _universe = u,
                        _summary = initSummary p}
   e' <- liftIO $ execStateT run' e
-  let modifiedAgents = addIfAgent (view other e')
+  let modifiedAgents = O.addIfWain (view other e')
             $ view subject e' : view weanlings e'
   U.writeToLog $
     "Modified agents: " ++ show (map agentId modifiedAgents)
@@ -285,9 +263,8 @@ run' :: StateT Experiment IO ()
 run' = do
   (e0, ec0) <- totalEnergy
   a <- use subject
-  zoom universe . U.writeToLog $ "---------- " ++ agentId a
-    ++ "'s turn ----------"
-  zoom universe . U.writeToLog $ "At beginning of turn, " ++ agentId a
+  report $ "---------- " ++ agentId a ++ "'s turn ----------"
+  report $ "At beginning of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty (Stats.stats a)
   runMetabolism
   autoPopControl <- use (universe . U.uPopControl)
@@ -296,11 +273,11 @@ run' = do
   wainBeforeAction <- use subject
   runAction (view action r)
   letSubjectReflect wainBeforeAction r
-  autoAdjustSubjectPassion
-  autoAdjustSubjectBoredom
-  subject %= incAge
+  subject %= W.autoAdjustPassion
+  subject %= W.autoAdjustBoredom
+  subject %= W.incAge
   a' <- use subject
-  zoom universe . U.writeToLog $ "End of " ++ agentId a ++ "'s turn"
+  report $ "End of " ++ agentId a ++ "'s turn"
   -- assign (summary.rNetDeltaE) (energy a' - energy a)
   unless (isAlive a') $ assign (summary.rDeathCount) 1
   summary %= fillInSummary
@@ -309,7 +286,7 @@ run' = do
   updateChildren
   killIfTooOld
   agentStats <- ((Stats.stats a' ++) . summaryStats) <$> use summary
-  zoom universe . U.writeToLog $ "At end of turn, " ++ agentId a
+  report $ "At end of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty agentStats
   rsf <- use (universe . U.uRawStatsFile)
   zoom universe $ writeRawStats (agentId a) rsf agentStats
@@ -342,9 +319,8 @@ balanceEnergyEquation e0 ec0 ef ecf = do
   let netDeltaE2 = ef - e0
   let err = abs (netDeltaE1 - netDeltaE2)
   when (err > 0.000001) $ do
-    zoom universe . U.writeToLog $
-      "WARNING: Adult energy equation doesn't balance"
-    zoom universe . U.writeToLog $ "e0=" ++ show e0 ++ ", ef=" ++ show ef
+    report $ "WARNING: Adult energy equation doesn't balance"
+    report $ "e0=" ++ show e0 ++ ", ef=" ++ show ef
       ++ ", netDeltaE2=" ++ show netDeltaE2
       ++ ", netDeltaE1=" ++ show netDeltaE1
       ++ ", err=" ++ show err
@@ -352,10 +328,8 @@ balanceEnergyEquation e0 ec0 ef ecf = do
   let childNetDeltaE2 = ecf - ec0
   let childErr = abs (childNetDeltaE1 - childNetDeltaE2)
   when (childErr > 0.000001) $ do
-    zoom universe . U.writeToLog $
-      "WARNING: Child energy equation doesn't balance"
-    zoom universe . U.writeToLog $ "ec0=" ++ show ec0
-      ++ ", ecf=" ++ show ecf
+    report $ "WARNING: Child energy equation doesn't balance"
+    report $ "ec0=" ++ show ec0 ++ ", ecf=" ++ show ecf
       ++ ", childNetDeltaE2=" ++ show childNetDeltaE2
       ++ ", childNetDeltaE1=" ++ show childNetDeltaE1
       ++ ", childErr=" ++ show childErr
@@ -366,11 +340,11 @@ runMetabolism = do
   bms <- use (universe . U.uBaseMetabolismDeltaE)
   cps <- use (universe . U.uEnergyCostPerByte)
   ccf <- use (universe . U.uChildCostFactor)
-  let (a', adultCost, childCost) = applyMetabolismCost bms cps ccf a
-  zoom universe . U.writeToLog $ "bms=" ++ show bms
-    ++ " cps=" ++ show cps ++ " adult size=" ++ show (view wainSize a)
+  let (a', adultCost, childCost) = W.applyMetabolismCost bms cps ccf a
+  report $ "bms=" ++ show bms ++ " cps=" ++ show cps
+    ++ " adult size=" ++ show (view W.wainSize a)
     ++ " adult cost=" ++ show adultCost
-    ++ " adult energy after=" ++ show (view energy a')
+    ++ " adult energy after=" ++ show (view W.energy a')
     ++ " alive=" ++ show (isAlive a')
   (summary . rMetabolismDeltaE) += adultCost
   (summary . rChildMetabolismDeltaE) += childCost
@@ -390,19 +364,21 @@ chooseAction3
     -> StateT (U.Universe ImageWain) IO
         (Response Action, ImageWain)
 chooseAction3 w obj = do
-  U.writeToLog $ agentId w ++ " sees " ++ objectId obj
-  whenM (use U.uShowPredictorModels) $ describePredictorModels w
+  U.writeToLog $ agentId w ++ " sees " ++ O.objectId obj
+  whenM (use U.uShowPredictorModels)
+    (mapM_ U.writeToLog . IW.describePredictorModels $ w)
   let (lds, sps, rplos, aos, r, w')
-        = chooseAction [objectAppearance obj] w
+        = W.chooseAction [O.objectAppearance obj] w
   let objLabel = analyseClassification lds
   -- whenM (use U.uGenFmris) (writeFmri w)
-  whenM (use U.uGenFmris) (describeClassifierModels w)
+  whenM (use U.uGenFmris)
+    (mapM_ U.writeToLog . IW.describeClassifierModels $ w)
   U.writeToLog $ "scenario=" ++ pretty (view scenario r)
   whenM (use U.uShowPredictions) $ do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos
     mapM_ U.writeToLog $ decisionReport aos
-  U.writeToLog $  agentId w ++ " sees " ++ objectId obj
+  U.writeToLog $  agentId w ++ " sees " ++ O.objectId obj
     ++ ", classifies it as " ++ show objLabel ++ " and chooses to "
     ++ show (view action r) ++ " predicting the outcome "
     ++ show (view outcome r)
@@ -413,23 +389,10 @@ analyseClassification
 analyseClassification ldss = l
   where ((l, _):_) = map (minimumBy (comparing snd)) ldss
 
-describeClassifierModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
-describeClassifierModels w = mapM_ (U.writeToLog . f) ms
-  where ms = toList . modelMap . view (brain . classifier) $ w
-        f (l, r) = view name w ++ "'s classifier model "
-                     ++ show l ++ ": <img src='data:image/png;base64,"
-                     ++ base64encode r ++ "'/>"
-
-describePredictorModels :: ImageWain -> StateT (U.Universe ImageWain) IO ()
-describePredictorModels w = mapM_ (U.writeToLog . f) ms
-  where ms = toList . modelMap . view (brain . predictor) $ w
-        f (l, r) = view name w ++ "'s predictor model " ++ show l ++ ": "
-                     ++ pretty r
-
 chooseObject :: [Rational] -> ImageWain -> ImageDB -> IO Object
 chooseObject freqs w db = do
   (img1, imageId1) <- evalStateT anyImage db
-  fromList $ zip [IObject img1 imageId1, AObject w] freqs
+  fromList $ zip [O.IObject img1 imageId1, O.AObject w] freqs
 
 runAction :: Action -> StateT Experiment IO ()
 
@@ -438,9 +401,10 @@ runAction :: Action -> StateT Experiment IO ()
 --
 runAction Eat = do
   obj <- use other
-  let n = objectNum obj
+  let n = O.objectNum obj
   deltaEs <- use (universe . U.uInteractionDeltaE)
-  adjustSubjectEnergy (deltaEs !! n) rEatDeltaE rChildEatDeltaE
+  IW.adjustEnergy subject (deltaEs !! n) rEatDeltaE rChildEatDeltaE
+    summary report
   (summary.rEatCount) += 1
 
 --
@@ -448,7 +412,7 @@ runAction Eat = do
 --
 runAction Play = do
   obj <- use other
-  let n = objectNum obj
+  let n = O.objectNum obj
   deltaBs <- use (universe . U.uInteractionDeltaB)
   adjustSubjectBoredom (deltaBs !! n) rPlayDeltaB
   (summary.rPlayCount) += 1
@@ -459,7 +423,7 @@ runAction Play = do
 runAction Flirt = do
   applyFlirtationEffects
   obj <- use other
-  unless (isImage obj) flirt
+  unless (O.isImage obj) flirt
   (summary.rFlirtCount) += 1
 
 --
@@ -474,53 +438,58 @@ runAction Ignore = (summary.rIgnoreCount) += 1
 applyPopControl :: StateT Experiment IO ()
 applyPopControl = do
   deltaE <- zoom (universe . U.uPopControlDeltaE) getPS
-  adjustSubjectEnergy deltaE rPopControlDeltaE
-    rChildPopControlDeltaE
+  IW.adjustEnergy subject deltaE rPopControlDeltaE
+    rChildPopControlDeltaE summary report
 
 flirt :: StateT Experiment IO ()
 flirt = do
   a <- use subject
-  (AObject b) <- use other
+  b <- use otherWain
   babyName <- zoom universe U.genName
   (a':b':_, msgs, aMatingDeltaE, bMatingDeltaE)
-    <- liftIO . evalRandIO $ mate a b babyName
+    <- liftIO . evalRandIO $ W.mate a b babyName
   if null msgs
     then do
-      zoom universe . U.writeToLog $
-        agentId a ++ " and " ++ agentId b ++ " mated"
+      report $ agentId a ++ " and " ++ agentId b ++ " mated"
+      report $ "Contribution to child: " ++
+        agentId a ++ "'s share is " ++ show aMatingDeltaE ++ " " ++ 
+        agentId b ++ "'s share is " ++ show bMatingDeltaE
       assign subject a'
-      assign other (AObject b')
+      assign otherWain b'
       recordBirths
       (summary . rMatingDeltaE) += aMatingDeltaE
       (summary . rOtherMatingDeltaE) += bMatingDeltaE
       (summary . rMateCount) += 1
-    else mapM_ (zoom universe . U.writeToLog) msgs
+    else mapM_ (report) msgs
 
 recordBirths :: StateT Experiment IO ()
 recordBirths = do
   a <- use subject
-  (summary.rBirthCount) += length (view litter a)
+  (summary.rBirthCount) += length (view W.litter a)
 
 applyFlirtationEffects :: StateT Experiment IO ()
 applyFlirtationEffects = do
   deltaE <- use (universe . U.uFlirtingDeltaE)
-  adjustSubjectEnergy deltaE rFlirtingDeltaE undefined
+  report $ "Applying flirtation energy adjustment"
+  IW.adjustEnergy subject deltaE rFlirtingDeltaE undefined summary report
+  (summary.rFlirtCount) += 1
 
 updateChildren :: StateT Experiment IO ()
 updateChildren = do
-  (a:matureChildren) <- weanMatureChildren <$> use subject
+  (a:matureChildren) <- W.weanMatureChildren <$> use subject
   assign subject a
-  (a':deadChildren) <- pruneDeadChildren <$> use subject
+  (a':deadChildren) <- W.pruneDeadChildren <$> use subject
   assign subject a'
   assign weanlings (matureChildren ++ deadChildren)
   (summary.rWeanCount) += length matureChildren
 
 killIfTooOld :: StateT Experiment IO ()
 killIfTooOld = do
-  a <- view age <$> use subject
+  a <- view W.age <$> use subject
   maxAge <- use (universe . U.uMaxAge)
   when (fromIntegral a > maxAge) $
-    adjustSubjectEnergy (-100) rOldAgeDeltaE rChildOldAgeDeltaE
+    IW.adjustEnergy subject (-100) rOldAgeDeltaE rChildOldAgeDeltaE
+      summary report
 
 finishRound :: FilePath -> StateT (U.Universe ImageWain) IO ()
 finishRound f = do
@@ -555,10 +524,10 @@ idealPopControlDeltaE idealPop pop energyToAddWain
 
 totalEnergy :: StateT Experiment IO (Double, Double)
 totalEnergy = do
-  a <- fmap uiToDouble $ view energy <$> use subject
-  b <- fmap uiToDouble $ objectEnergy <$> use other
-  d <- childEnergy <$> use subject
-  e <- objectChildEnergy <$> use other
+  a <- fmap uiToDouble $ view W.energy <$> use subject
+  b <- fmap uiToDouble $ view W.energy <$> use otherWain
+  d <- W.childEnergy <$> use subject
+  e <- W.childEnergy <$> use otherWain
   return (a + b, d + e)
 
 printStats :: [[Stats.Statistic]] -> StateT (U.Universe ImageWain) IO ()
@@ -566,47 +535,27 @@ printStats = mapM_ f
   where f xs = U.writeToLog $
                  "Summary - " ++ intercalate "," (map pretty xs)
 
-adjustSubjectEnergy
-  :: Double -> Simple Lens Summary Double
-    -> Simple Lens Summary Double -> StateT Experiment IO ()
-adjustSubjectEnergy deltaE adultSelector childSelector = do
-  x <- use subject
-  let (x', adultDeltaE, childDeltaE)
-        = adjustEnergy deltaE x
-  (summary . adultSelector) += adultDeltaE
-  when (childDeltaE /= 0) $
-    (summary . childSelector) += childDeltaE
-  assign subject x'
-
 adjustSubjectBoredom
   :: Double -> Simple Lens Summary Double -> StateT Experiment IO ()
 adjustSubjectBoredom deltaB adultSelector = do
   x <- use subject
-  let (x', deltaB') = adjustBoredom deltaB x
+  let (x', deltaB') = W.adjustBoredom deltaB x
   (summary . adultSelector) += deltaB'
   assign subject x'
-
-autoAdjustSubjectBoredom
-  :: StateT Experiment IO ()
-autoAdjustSubjectBoredom = subject %= autoAdjustBoredom
-
-autoAdjustSubjectPassion
-  :: StateT Experiment IO ()
-autoAdjustSubjectPassion = subject %= autoAdjustPassion
 
 letSubjectReflect
   :: ImageWain -> Response Action -> StateT Experiment IO ()
 letSubjectReflect wainBefore r = do
   x <- use subject
-  p <- objectAppearance <$> use other
-  let energyBefore = view energy wainBefore
-  let boredomBefore = view boredom wainBefore
-  let passionBefore = view passion wainBefore
-  let happinessBefore = happiness wainBefore
-  energyAfter <- use (subject.energy)
-  boredomAfter <- use (subject.boredom)
-  passionAfter <- use (subject.passion)
-  happinessAfter <- happiness <$> use subject
+  p <- O.objectAppearance <$> use other
+  let energyBefore = view W.energy wainBefore
+  let boredomBefore = view W.boredom wainBefore
+  let passionBefore = view W.passion wainBefore
+  let happinessBefore = W.happiness wainBefore
+  energyAfter <- use (subject . W.energy)
+  boredomAfter <- use (subject . W.boredom)
+  passionAfter <- use (subject . W.passion)
+  happinessAfter <- W.happiness <$> use subject
   let deltaH = uiToDouble happinessAfter - uiToDouble happinessBefore
   assign (summary . rDeltaEToReflectOn)
     (uiToDouble energyAfter - uiToDouble energyBefore)
@@ -615,14 +564,13 @@ letSubjectReflect wainBefore r = do
   assign (summary . rDeltaPToReflectOn)
     (uiToDouble passionAfter - uiToDouble passionBefore)
   assign (summary . rDeltaHToReflectOn) deltaH
-  let (x', err) = reflect [p] r x
+  let (x', err) = W.reflect [p] r x
   assign subject x'
   assign (summary . rErr) err
   when (deltaH < 0) $ do
     b <- use other
-    zoom universe . U.writeToLog $
-      agentId x ++ "'s choice to " ++ show (view action r) ++ " (with) "
-        ++ objectId b ++ " was a mistake"
+    report $ agentId x ++ "'s choice to " ++ show (view action r) ++ " (with) "
+        ++ O.objectId b ++ " was a mistake"
     (summary . rMistakeCount) += 1
 
 writeRawStats
@@ -638,4 +586,4 @@ reportAnyDeaths :: [ImageWain] -> StateT (U.Universe ImageWain) IO ()
 reportAnyDeaths ws = mapM_ f ws
   where f w = when (not . isAlive $ w) $
                 U.writeToLog
-                  (agentId w ++ " dead at age " ++ show (view age w))
+                  (agentId w ++ " dead at age " ++ show (view W.age w))

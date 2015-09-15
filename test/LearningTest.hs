@@ -19,9 +19,10 @@ import ALife.Creatur.Wain.Classifier (buildClassifier)
 import ALife.Creatur.Wain.Predictor (buildPredictor)
 import ALife.Creatur.Wain.Interaction.Action (Action(..))
 import ALife.Creatur.Wain.Interaction.Experiment
-import ALife.Creatur.Wain.Interaction.Image
-import ALife.Creatur.Wain.Interaction.FMRI
+import ALife.Creatur.Wain.Image
 import ALife.Creatur.Wain.Muser (makeMuser)
+import ALife.Creatur.Wain.Object (Object(..), objectNum, objectId,
+  objectAppearance, isImage)
 import ALife.Creatur.Wain.Statistics (stats)
 import ALife.Creatur.Wain.Response (action, outcome)
 import ALife.Creatur.Wain.GeneticSOMInternal (ExponentialParams(..),
@@ -38,8 +39,6 @@ import Control.Monad.Random (evalRandIO)
 import qualified Data.Map.Strict as M
 import Data.List (minimumBy)
 import Data.Ord (comparing)
-import Diagrams.Backend.SVG
-import Diagrams.Prelude hiding (view)
 import System.Directory
 import System.FilePath.Posix (takeFileName)
 
@@ -49,7 +48,7 @@ interactionDeltaE=[1, 0.8, 0.6, 0.3, 0.2, 0.1, 0, -0.1, -0.2, -0.3, -0.05]
 interactionDeltaB :: [Double]
 interactionDeltaB=[0, -0.1, -0.2, -0.3, -0.6, -0.8, -1.0, -0.2, 0, 0, 0.1]
 
-runAction :: Action -> Object -> ImageWain -> ImageWain
+runAction :: Action -> Object Action -> ImageWain -> ImageWain
 runAction Eat obj w = w'
   where (w', _, _) = adjustEnergy (interactionDeltaE !! objectNum obj) w
 runAction Play obj w = w'
@@ -83,7 +82,7 @@ testWain = w'
               wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta
         (w', _, _) = adjustEnergy 0.5 w
 
-tryOne :: ImageWain -> Object -> IO (ImageWain)
+tryOne :: ImageWain -> Object Action -> IO (ImageWain)
 tryOne w obj = do
   putStrLn $ "-----"
   putStrLn $ "stats=" ++ show (stats w)
@@ -153,7 +152,7 @@ readDirAndShuffle d = do
   files <- map (d ++) . drop 2 <$> getDirectoryContents d
   evalRandIO $ shuffle files
 
-readImage2 :: FilePath -> IO Object
+readImage2 :: FilePath -> IO (Object Action)
 readImage2 f = do
   img <- readImage f
   return $ IObject img (takeFileName f)
@@ -162,10 +161,6 @@ main :: IO ()
 main = do
   files <- take 1000 . drop 2 <$> readDirAndShuffle dir
   imgs <- mapM readImage2 files
-  w <- foldM tryOne testWain imgs
+  _ <- foldM tryOne testWain imgs
   putStrLn "test complete"
-  let ss = mkSizeSpec2D (Just 500) Nothing
-  let diagram = drawClassifier . M.toList . modelMap . view classifier . view brain $ w :: QDiagram SVG V2 Double Any
-  let outputFileName = "learn.svg"
-  renderSVG outputFileName ss diagram
 
