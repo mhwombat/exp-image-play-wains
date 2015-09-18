@@ -44,7 +44,7 @@ import qualified ALife.Creatur.Wain.Object as O
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
-  outcome, scenario)
+  outcomes, labels)
 import ALife.Creatur.Wain.UnitInterval (uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..), numActions)
@@ -63,7 +63,7 @@ import Control.Conditional (whenM)
 import Control.Lens hiding (universe)
 import Control.Monad (when, unless)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandoms,
+import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandomRs,
   evalRandIO, fromList)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.List (intercalate, minimumBy)
@@ -93,14 +93,12 @@ randomImageWain wName u classifierSize = do
                 _dRange = view U.uPredictorDRange u }
   fd <- randomExponential fdp
   predictorThreshold <- getRandomR (view U.uPredictorThresholdRange u)
-  cw <- (makeWeights . take 3) <$> getRandoms
-  rw <- (makeWeights . take 2) <$> getRandoms
   let predictorSize = classifierSize * fromIntegral numActions
-  let dr = buildPredictor fd predictorSize predictorThreshold cw rw
+  let dr = buildPredictor fd predictorSize predictorThreshold
   -- TODO: Allow a range of random weights
   -- hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
   let hw = makeWeights [0.7, 0.3, 0.1]
-  dOut <- getRandomR $ view U.uDefaultOutcomeRange u
+  dOut <- take 3 <$> getRandomRs (view U.uDefaultOutcomeRange u)
   dp <- getRandomR $ view U.uDepthRange u
   let mr = makeMuser dOut dp
   let wBrain = makeBrain c mr dr hw
@@ -373,15 +371,15 @@ chooseAction3 w obj = do
   -- whenM (use U.uGenFmris) (writeFmri w)
   whenM (use U.uGenFmris)
     (mapM_ U.writeToLog . IW.describeClassifierModels $ w)
-  U.writeToLog $ "scenario=" ++ pretty (view scenario r)
+  U.writeToLog $ "scenario=" ++ pretty (view labels r)
   whenM (use U.uShowPredictions) $ do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos
     mapM_ U.writeToLog $ decisionReport aos
   U.writeToLog $  agentId w ++ " sees " ++ O.objectId obj
     ++ ", classifies it as " ++ show objLabel ++ " and chooses to "
-    ++ show (view action r) ++ " predicting the outcome "
-    ++ show (view outcome r)
+    ++ show (view action r) ++ " predicting the outcomes "
+    ++ show (view outcomes r)
   return (r, w')
 
 analyseClassification
@@ -546,7 +544,7 @@ adjustSubjectBoredom deltaB adultSelector = do
 letSubjectReflect
   :: ImageWain -> Response Action -> StateT Experiment IO ()
 letSubjectReflect wainBefore r = do
-  x <- use subject
+  w <- use subject
   p <- O.objectAppearance <$> use other
   let energyBefore = view W.energy wainBefore
   let boredomBefore = view W.boredom wainBefore
@@ -564,13 +562,13 @@ letSubjectReflect wainBefore r = do
   assign (summary . rDeltaPToReflectOn)
     (uiToDouble passionAfter - uiToDouble passionBefore)
   assign (summary . rDeltaHToReflectOn) deltaH
-  let (x', err) = W.reflect [p] r x
-  assign subject x'
+  let (w', err) = W.reflect [p] r wainBefore w
+  assign subject w'
   assign (summary . rErr) err
   when (deltaH < 0) $ do
     b <- use other
-    report $ agentId x ++ "'s choice to " ++ show (view action r) ++ " (with) "
-        ++ O.objectId b ++ " was a mistake"
+    report $ agentId w ++ "'s choice to " ++ show (view action r)
+      ++ " (with) " ++ O.objectId b ++ " was a mistake"
     (summary . rMistakeCount) += 1
 
 writeRawStats
