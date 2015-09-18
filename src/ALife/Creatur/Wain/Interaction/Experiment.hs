@@ -45,7 +45,7 @@ import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, action,
   outcomes, labels)
-import ALife.Creatur.Wain.UnitInterval (uiToDouble)
+import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..), numActions)
 -- import qualified ALife.Creatur.Wain.Interaction.FMRI as F
@@ -523,11 +523,25 @@ idealPopControlDeltaE idealPop pop energyToAddWain
 totalEnergy :: StateT Experiment IO (Double, Double)
 totalEnergy = do
   a <- fmap uiToDouble $ view W.energy <$> use subject
-  b <- fmap uiToDouble $ view W.energy <$> use otherWain
+  b <- fmap uiToDouble $ otherWainEnergy
   d <- W.childEnergy <$> use subject
-  e <- W.childEnergy <$> use otherWain
+  e <- otherChildEnergy
   return (a + b, d + e)
 
+otherWainEnergy :: StateT Experiment IO UIDouble
+otherWainEnergy = do
+  x <- use other
+  case x of
+    O.AObject w -> return $ view W.energy w
+    _           -> return 0
+  
+otherChildEnergy :: StateT Experiment IO Double
+otherChildEnergy = do
+  x <- use other
+  case x of
+    O.AObject w -> return $ W.childEnergy w
+    _           -> return 0
+  
 printStats :: [[Stats.Statistic]] -> StateT (U.Universe ImageWain) IO ()
 printStats = mapM_ f
   where f xs = U.writeToLog $
