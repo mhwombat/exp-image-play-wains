@@ -334,7 +334,7 @@ runMetabolism :: StateT Experiment IO ()
 runMetabolism = do
   a <- use subject
   bms <- use (universe . U.uBaseMetabolismDeltaE)
-  cps <- use (universe . U.uEnergyCostPerCModel)
+  cps <- use (universe . U.uEnergyCostPerByte)
   ccf <- use (universe . U.uChildCostFactor)
   let (a', adultCost, childCost) = W.applyMetabolismCost bms cps ccf a
   (summary . rMetabolismDeltaE) += adultCost
