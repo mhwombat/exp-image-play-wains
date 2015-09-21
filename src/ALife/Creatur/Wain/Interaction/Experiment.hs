@@ -43,8 +43,7 @@ import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
 import qualified ALife.Creatur.Wain.Object as O
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
-import ALife.Creatur.Wain.Response (Response, action,
-  outcomes, labels)
+import ALife.Creatur.Wain.Response (Response, action, outcomes)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..), numActions)
@@ -335,14 +334,9 @@ runMetabolism :: StateT Experiment IO ()
 runMetabolism = do
   a <- use subject
   bms <- use (universe . U.uBaseMetabolismDeltaE)
-  cps <- use (universe . U.uEnergyCostPerByte)
+  cps <- use (universe . U.uEnergyCostPerCModel)
   ccf <- use (universe . U.uChildCostFactor)
   let (a', adultCost, childCost) = W.applyMetabolismCost bms cps ccf a
-  -- report $ "bms=" ++ show bms ++ " cps=" ++ show cps
-  --   ++ " adult size=" ++ show (view W.wainSize a)
-  --   ++ " adult cost=" ++ show adultCost
-  --   ++ " adult energy after=" ++ show (view W.energy a')
-  --   ++ " alive=" ++ show (isAlive a')
   (summary . rMetabolismDeltaE) += adultCost
   (summary . rChildMetabolismDeltaE) += childCost
   assign subject a'

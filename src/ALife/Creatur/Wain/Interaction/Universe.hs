@@ -83,8 +83,7 @@ import qualified ALife.Creatur as A
 import qualified ALife.Creatur.Namer as N
 import qualified ALife.Creatur.Checklist as CL
 import qualified ALife.Creatur.Counter as K
-import qualified ALife.Creatur.Database as D
-import qualified ALife.Creatur.Database.CachedFileSystem as CFS
+import qualified ALife.Creatur.Database.FileSystem as FS
 import qualified ALife.Creatur.Logger.SimpleLogger as SL
 import ALife.Creatur.Persistent (Persistent, mkPersistent)
 import qualified ALife.Creatur.Universe as U
@@ -104,7 +103,7 @@ data Universe a = Universe
     _uExperimentName :: String,
     _uClock :: K.PersistentCounter,
     _uLogger :: SL.SimpleLogger,
-    _uDB :: CFS.CachedFSDatabase a,
+    _uDB :: FS.FSDatabase a,
     _uNamer :: N.SimpleNamer,
     _uChecklist :: CL.PersistentChecklist,
     _uStatsFile :: FilePath,
@@ -150,7 +149,7 @@ data Universe a = Universe
   } deriving Show
 makeLenses ''Universe
 
-instance (A.Agent a, D.SizedRecord a) => U.Universe (Universe a) where
+instance (A.Agent a) => U.Universe (Universe a) where
   type Agent (Universe a) = a
   type Clock (Universe a) = K.PersistentCounter
   clock = _uClock
@@ -158,7 +157,7 @@ instance (A.Agent a, D.SizedRecord a) => U.Universe (Universe a) where
   type Logger (Universe a) = SL.SimpleLogger
   logger = _uLogger
   setLogger u l = u { _uLogger=l }
-  type AgentDB (Universe a) = CFS.CachedFSDatabase a
+  type AgentDB (Universe a) = FS.FSDatabase a
   agentDB = _uDB
   setAgentDB u d = u { _uDB=d }
   type Namer (Universe a) = N.SimpleNamer
@@ -177,9 +176,6 @@ cExperimentName = requiredSetting "experimentName"
 
 cWorkingDir :: Setting FilePath
 cWorkingDir = requiredSetting "workingDir"
-
-cCacheSize :: Setting Int
-cCacheSize = requiredSetting "cacheSize"
 
 cShowPredictorModels :: Setting Bool
 cShowPredictorModels = requiredSetting "showPredictorModels"
@@ -306,7 +302,7 @@ config2Universe getSetting =
       _uExperimentName = en,
       _uClock = K.mkPersistentCounter (workDir ++ "/clock"),
       _uLogger = SL.mkSimpleLogger (workDir ++ "/log/" ++ en ++ ".log"),
-      _uDB = CFS.mkFSDatabase (workDir ++ "/db"),
+      _uDB = FS.mkFSDatabase (workDir ++ "/db"),
       _uNamer = N.mkSimpleNamer (en ++ "_") (workDir ++ "/namer"),
       _uChecklist = CL.mkPersistentChecklist (workDir ++ "/todo"),
       _uStatsFile = workDir ++ "/statsFile",
