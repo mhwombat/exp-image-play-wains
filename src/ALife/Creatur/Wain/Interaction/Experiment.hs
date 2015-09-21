@@ -275,7 +275,6 @@ run' = do
   subject %= W.autoAdjustBoredom
   subject %= W.incAge
   a' <- use subject
-  report $ "End of " ++ agentId a ++ "'s turn"
   -- assign (summary.rNetDeltaE) (energy a' - energy a)
   unless (isAlive a') $ assign (summary.rDeathCount) 1
   summary %= fillInSummary
@@ -339,11 +338,11 @@ runMetabolism = do
   cps <- use (universe . U.uEnergyCostPerByte)
   ccf <- use (universe . U.uChildCostFactor)
   let (a', adultCost, childCost) = W.applyMetabolismCost bms cps ccf a
-  report $ "bms=" ++ show bms ++ " cps=" ++ show cps
-    ++ " adult size=" ++ show (view W.wainSize a)
-    ++ " adult cost=" ++ show adultCost
-    ++ " adult energy after=" ++ show (view W.energy a')
-    ++ " alive=" ++ show (isAlive a')
+  -- report $ "bms=" ++ show bms ++ " cps=" ++ show cps
+  --   ++ " adult size=" ++ show (view W.wainSize a)
+  --   ++ " adult cost=" ++ show adultCost
+  --   ++ " adult energy after=" ++ show (view W.energy a')
+  --   ++ " alive=" ++ show (isAlive a')
   (summary . rMetabolismDeltaE) += adultCost
   (summary . rChildMetabolismDeltaE) += childCost
   assign subject a'
@@ -362,7 +361,6 @@ chooseAction3
     -> StateT (U.Universe ImageWain) IO
         (Response Action, ImageWain)
 chooseAction3 w obj = do
-  U.writeToLog $ agentId w ++ " sees " ++ O.objectId obj
   whenM (use U.uShowPredictorModels)
     (mapM_ U.writeToLog . IW.describePredictorModels $ w)
   let (lds, sps, rplos, aos, r, w')
@@ -371,7 +369,6 @@ chooseAction3 w obj = do
   -- whenM (use U.uGenFmris) (writeFmri w)
   whenM (use U.uGenFmris)
     (mapM_ U.writeToLog . IW.describeClassifierModels $ w)
-  U.writeToLog $ "scenario=" ++ pretty (view labels r)
   whenM (use U.uShowPredictions) $ do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos

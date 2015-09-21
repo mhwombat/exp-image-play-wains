@@ -52,7 +52,7 @@ module ALife.Creatur.Wain.Interaction.Universe
     uEnergyToAddWain,
     uFrequencies,
     uBaseMetabolismDeltaE,
-    uEnergyCostPerByte,
+    uEnergyCostPerCModel,
     uChildCostFactor,
     uInteractionDeltaE,
     uInteractionDeltaB,
@@ -130,7 +130,7 @@ data Universe a = Universe
     _uEnergyToAddWain :: Double,
     _uFrequencies :: [Rational],
     _uBaseMetabolismDeltaE :: Double,
-    _uEnergyCostPerByte :: Double,
+    _uEnergyCostPerCModel :: Double,
     _uChildCostFactor :: Double,
     _uInteractionDeltaE :: [Double],
     _uInteractionDeltaB :: [Double],
@@ -241,8 +241,8 @@ cFrequencies = requiredSetting "frequencies"
 cBaseMetabolismDeltaE :: Setting Double
 cBaseMetabolismDeltaE = requiredSetting "baseMetabDeltaE"
 
-cEnergyCostPerByte :: Setting Double
-cEnergyCostPerByte = requiredSetting "energyCostPerByte"
+cEnergyCostPerCModel :: Setting Double
+cEnergyCostPerCModel = requiredSetting "energyCostPerCModel"
 
 cChildCostFactor :: Setting Double
 cChildCostFactor = requiredSetting "childCostFactor"
@@ -306,9 +306,7 @@ config2Universe getSetting =
       _uExperimentName = en,
       _uClock = K.mkPersistentCounter (workDir ++ "/clock"),
       _uLogger = SL.mkSimpleLogger (workDir ++ "/log/" ++ en ++ ".log"),
-      _uDB
-        = CFS.mkCachedFSDatabase (workDir ++ "/db")
-          (getSetting cCacheSize),
+      _uDB = CFS.mkFSDatabase (workDir ++ "/db"),
       _uNamer = N.mkSimpleNamer (en ++ "_") (workDir ++ "/namer"),
       _uChecklist = CL.mkPersistentChecklist (workDir ++ "/todo"),
       _uStatsFile = workDir ++ "/statsFile",
@@ -334,7 +332,7 @@ config2Universe getSetting =
       _uEnergyToAddWain = getSetting cEnergyToAddWain,
       _uFrequencies = getSetting cFrequencies,
       _uBaseMetabolismDeltaE = getSetting cBaseMetabolismDeltaE,
-      _uEnergyCostPerByte = getSetting cEnergyCostPerByte,
+      _uEnergyCostPerCModel = getSetting cEnergyCostPerCModel,
       _uChildCostFactor = getSetting cChildCostFactor,
       _uFlirtingDeltaE = getSetting cFlirtingDeltaE,
       _uInteractionDeltaE = getSetting cInteractionDeltaE,

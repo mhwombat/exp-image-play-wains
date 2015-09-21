@@ -1,5 +1,5 @@
 name:                interacting-wains
-version:             2.15
+version:             2.16
 synopsis:            Agent for categorising images.
 description:         ALife agent that works co-operatively with other
                      agents to develop a classification scheme for
@@ -21,7 +21,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/interacting-wains.git
-  tag:      2.15
+  tag:      2.16
 
 executable interaction-daemon
   main-is:          ALife/Creatur/Wain/Interaction/Daemon.hs
@@ -38,7 +38,7 @@ executable interaction-daemon
                     containers ==0.5.*,
                     creatur ==5.9.*,
                     creatur-image-wains ==0.1.*,
-                    creatur-wains ==7.7.*,
+                    creatur-wains ==7.8.*,
                     directory ==1.2.*,
                     filepath ==1.4.*,
                     hdaemonize ==0.5.*,
@@ -73,7 +73,7 @@ executable interaction-init
                     containers ==0.5.*,
                     creatur ==5.9.*,
                     creatur-image-wains ==0.1.*,
-                    creatur-wains ==7.7.*,
+                    creatur-wains ==7.8.*,
                     directory ==1.2.*,
                     filepath ==1.4.*,
                     lens ==4.12.*,
@@ -106,7 +106,7 @@ executable interaction-examine
                     containers ==0.5.*,
                     creatur ==5.9.*,
                     creatur-image-wains ==0.1.*,
-                    creatur-wains ==7.7.*,
+                    creatur-wains ==7.8.*,
                     directory ==1.2.*,
                     filepath ==1.4.*,
                     lens ==4.12.*,
@@ -141,7 +141,7 @@ Test-suite interaction-tests
                     containers ==0.5.*,
                     creatur ==5.9.*,
                     creatur-image-wains ==0.1.*,
-                    creatur-wains ==7.7.*,
+                    creatur-wains ==7.8.*,
                     creatur-wains-test-utils ==0.1.*,
                     directory ==1.2.*,
                     filepath ==1.4.*,
@@ -175,7 +175,7 @@ executable interaction-learning-test
                     containers ==0.5.*,
                     creatur ==5.9.*,
                     creatur-image-wains ==0.1.*,
-                    creatur-wains ==7.7.*,
+                    creatur-wains ==7.8.*,
                     directory ==1.2.*,
                     filepath ==1.4.*,
                     lens ==4.12.*,
