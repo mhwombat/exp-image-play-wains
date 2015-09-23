@@ -52,7 +52,7 @@ module ALife.Creatur.Wain.Interaction.Universe
     uEnergyToAddWain,
     uFrequencies,
     uBaseMetabolismDeltaE,
-    uEnergyCostPerByte,
+    uEnergyCostPerClassifierModel,
     uChildCostFactor,
     uInteractionDeltaE,
     uInteractionDeltaB,
@@ -130,7 +130,7 @@ data Universe a = Universe
     _uEnergyToAddWain :: Double,
     _uFrequencies :: [Rational],
     _uBaseMetabolismDeltaE :: Double,
-    _uEnergyCostPerByte :: Double,
+    _uEnergyCostPerClassifierModel :: Double,
     _uChildCostFactor :: Double,
     _uInteractionDeltaE :: [Double],
     _uInteractionDeltaB :: [Double],
@@ -241,8 +241,9 @@ cFrequencies = requiredSetting "frequencies"
 cBaseMetabolismDeltaE :: Setting Double
 cBaseMetabolismDeltaE = requiredSetting "baseMetabDeltaE"
 
-cEnergyCostPerByte :: Setting Double
-cEnergyCostPerByte = requiredSetting "energyCostPerByte"
+cEnergyCostPerClassifierModel :: Setting Double
+cEnergyCostPerClassifierModel
+  = requiredSetting "energyCostPerClassifierModel"
 
 cChildCostFactor :: Setting Double
 cChildCostFactor = requiredSetting "childCostFactor"
@@ -333,7 +334,8 @@ config2Universe getSetting =
       _uEnergyToAddWain = getSetting cEnergyToAddWain,
       _uFrequencies = getSetting cFrequencies,
       _uBaseMetabolismDeltaE = getSetting cBaseMetabolismDeltaE,
-      _uEnergyCostPerByte = getSetting cEnergyCostPerByte,
+      _uEnergyCostPerClassifierModel
+        = getSetting cEnergyCostPerClassifierModel,
       _uChildCostFactor = getSetting cChildCostFactor,
       _uFlirtingDeltaE = getSetting cFlirtingDeltaE,
       _uInteractionDeltaE = getSetting cInteractionDeltaE,

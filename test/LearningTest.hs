@@ -50,14 +50,14 @@ interactionDeltaB=[0, -0.1, -0.2, -0.3, -0.6, -0.8, -1.0, -0.2, 0, 0, 0.1]
 
 runAction :: Action -> Object Action -> ImageWain -> ImageWain
 runAction Eat obj w = w'
-  where (w', _, _) = adjustEnergy (interactionDeltaE !! objectNum obj) w
+  where (w', _) = adjustEnergy (interactionDeltaE !! objectNum obj) w
 runAction Play obj w = w'
   where (w', _) = adjustBoredom (interactionDeltaB !! objectNum obj) w
 runAction Flirt obj w =
   if isImage obj
     then w'
     else error "mating not supported"
-  where (w', _, _) = adjustEnergy (-0.001) w
+  where (w', _) = adjustEnergy (-0.001) w
 runAction Ignore _ w = w
 
 testWain :: ImageWain
@@ -80,7 +80,7 @@ testWain = w'
         ep = ExponentialParams 0.1 0.001
         w = buildWainAndGenerateGenome wName wAppearance wBrain
               wDevotion wAgeOfMaturity wPassionDelta wBoredomDelta
-        (w', _, _) = adjustEnergy 0.5 w
+        (w', _) = adjustEnergy 0.5 w
 
 putHtml :: String -> IO ()
 putHtml s = putStr s 
@@ -128,7 +128,7 @@ tryOne w obj = do
   let restorationEnergy = uiToDouble (view energy w) - uiToDouble (view energy wainRewarded)
   -- keep the wain's boredom constant
   let restorationBoredom = uiToDouble (view boredom w) - uiToDouble (view boredom wainRewarded)
-  let (wainPartiallyRestored, _, _) = adjustEnergy restorationEnergy wainAfterReflection
+  let (wainPartiallyRestored, _) = adjustEnergy restorationEnergy wainAfterReflection
   let (wainFinal, _) = adjustBoredom restorationBoredom wainPartiallyRestored
   -- putHtmlLn "Final classifier models"
   -- describeClassifierModels wainFinal
