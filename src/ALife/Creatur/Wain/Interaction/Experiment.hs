@@ -446,7 +446,7 @@ applyFlirtationEffects :: StateT Experiment IO ()
 applyFlirtationEffects = do
   deltaE <- use (universe . U.uFlirtingDeltaE)
   report $ "Applying flirtation energy adjustment"
-  IW.adjustEnergy subject deltaE rFlirtingDeltaE undefined summary report
+  IW.adjustEnergy subject deltaE rFlirtingDeltaE "flirting" summary report
   (summary.rFlirtCount) += 1
 
 updateChildren :: StateT Experiment IO ()
