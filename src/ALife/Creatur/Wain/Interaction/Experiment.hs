@@ -494,8 +494,8 @@ adjustPopControlDeltaE xs =
 
 idealPopControlDeltaE :: Double -> (Int, Int) -> Int -> Double
 idealPopControlDeltaE avgEnergy (a, b) pop
-  | pop < a   = 0.8 - avgEnergy
-  | pop > b   = avgEnergy - 0.2
+  | pop < a   = 0.6 - avgEnergy
+  | pop > b   = avgEnergy - 0.4
   | otherwise = 0.5 - avgEnergy
 
 totalEnergy :: StateT Experiment IO (Double, Double)
