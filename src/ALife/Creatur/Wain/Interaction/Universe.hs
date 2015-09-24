@@ -224,7 +224,7 @@ cIdealPopulationRange :: Setting (Double, Double)
 cIdealPopulationRange = requiredSetting "idealPopRange"
 
 cAllowedPopulationRange :: Setting (Double, Double)
-cAllowedPopulationRange = requiredSetting "popAllowedRange"
+cAllowedPopulationRange = requiredSetting "allowedPopRange"
 
 cPopControl :: Setting Bool
 cPopControl = requiredSetting "popControl"
