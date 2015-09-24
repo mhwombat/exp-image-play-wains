@@ -46,7 +46,7 @@ module ALife.Creatur.Wain.Interaction.Universe
     uMaturityRange,
     uMaxAge,
     uInitialPopulationSize,
-    uIdealPopulationRange,
+    uEnergyBudget,
     uAllowedPopulationRange,
     uPopControl,
     uFrequencies,
@@ -123,7 +123,7 @@ data Universe a = Universe
     _uMaturityRange :: (Word16, Word16),
     _uMaxAge :: Int,
     _uInitialPopulationSize :: Int,
-    _uIdealPopulationRange :: (Int, Int),
+    _uEnergyBudget :: Double,
     _uAllowedPopulationRange :: (Int, Int),
     _uPopControl :: Bool,
     _uFrequencies :: [Rational],
@@ -219,9 +219,6 @@ cMaxAge = requiredSetting "maxAge"
 
 cInitialPopulationSize :: Setting Int
 cInitialPopulationSize = requiredSetting "initialPopSize"
-
-cIdealPopulationRange :: Setting (Double, Double)
-cIdealPopulationRange = requiredSetting "idealPopRange"
 
 cAllowedPopulationRange :: Setting (Double, Double)
 cAllowedPopulationRange = requiredSetting "allowedPopRange"
@@ -322,7 +319,7 @@ config2Universe getSetting =
       _uMaturityRange = getSetting cMaturityRange,
       _uMaxAge = getSetting cMaxAge,
       _uInitialPopulationSize = p0,
-      _uIdealPopulationRange = (c', d'),
+      _uEnergyBudget = fromIntegral p0 * 0.5,
       _uAllowedPopulationRange = (a', b'),
       _uPopControl = getSetting cPopControl,
       _uFrequencies = getSetting cFrequencies,
@@ -354,6 +351,3 @@ config2Universe getSetting =
         (a, b) = getSetting cAllowedPopulationRange
         a' = round (fromIntegral p0 * a)
         b' = round (fromIntegral p0 * b)
-        (c, d) = getSetting cIdealPopulationRange
-        c' = round (fromIntegral p0 * c)
-        d' = round (fromIntegral p0 * d)
