@@ -476,7 +476,7 @@ finishRound f = do
   cs <- use U.uCheckpoints
   enforceAll zs cs
   clearStats f
-  (a, b) <- use U.uPopulationAllowedRange
+  (a, b) <- use U.uAllowedPopulationRange
   checkPopSize (a, b)
 
 adjustPopControlDeltaE
@@ -485,17 +485,18 @@ adjustPopControlDeltaE xs =
   unless (null xs) $ do
     pop <- U.popSize
     U.writeToLog $ "pop=" ++ show pop
-    idealPop <- use U.uIdealPopulationSize
-    U.writeToLog $ "ideal pop=" ++ show idealPop
-    energyToAddWain <- use U.uEnergyToAddWain
-    U.writeToLog $ "energy to add one wain=" ++ show energyToAddWain
-    let c = idealPopControlDeltaE idealPop pop energyToAddWain
+    popRange <- use U.uIdealPopulationRange
+    U.writeToLog $ "ideal pop range=" ++ show popRange
+    let (Just avgEnergy) = Stats.lookup "avg. energy" xs
+    let c = idealPopControlDeltaE avgEnergy popRange pop
     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
     zoom U.uPopControlDeltaE $ putPS c
 
-idealPopControlDeltaE :: Int -> Int -> Double -> Double
-idealPopControlDeltaE idealPop pop energyToAddWain
-  = energyToAddWain*fromIntegral (idealPop - pop) / fromIntegral pop
+idealPopControlDeltaE :: Double -> (Int, Int) -> Int -> Double
+idealPopControlDeltaE avgEnergy (a, b) pop
+  | pop < a   = 0.8 - avgEnergy
+  | pop > b   = avgEnergy - 0.2
+  | otherwise = 0.5 - avgEnergy
 
 totalEnergy :: StateT Experiment IO (Double, Double)
 totalEnergy = do

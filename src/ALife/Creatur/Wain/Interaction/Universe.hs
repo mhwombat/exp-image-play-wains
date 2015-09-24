@@ -46,10 +46,9 @@ module ALife.Creatur.Wain.Interaction.Universe
     uMaturityRange,
     uMaxAge,
     uInitialPopulationSize,
-    uIdealPopulationSize,
-    uPopulationAllowedRange,
+    uIdealPopulationRange,
+    uAllowedPopulationRange,
     uPopControl,
-    uEnergyToAddWain,
     uFrequencies,
     uBaseMetabolismDeltaE,
     uEnergyCostPerClassifierModel,
@@ -124,10 +123,9 @@ data Universe a = Universe
     _uMaturityRange :: (Word16, Word16),
     _uMaxAge :: Int,
     _uInitialPopulationSize :: Int,
-    _uIdealPopulationSize :: Int,
-    _uPopulationAllowedRange :: (Int, Int),
+    _uIdealPopulationRange :: (Int, Int),
+    _uAllowedPopulationRange :: (Int, Int),
     _uPopControl :: Bool,
-    _uEnergyToAddWain :: Double,
     _uFrequencies :: [Rational],
     _uBaseMetabolismDeltaE :: Double,
     _uEnergyCostPerClassifierModel :: Double,
@@ -211,8 +209,7 @@ cPredictorSizeRange
   = requiredSetting "predictorSizeRange"
 
 cDevotionRange :: Setting (UIDouble, UIDouble)
-cDevotionRange
-  = requiredSetting "devotionRange"
+cDevotionRange = requiredSetting "devotionRange"
 
 cMaturityRange :: Setting (Word16, Word16)
 cMaturityRange = requiredSetting "maturityRange"
@@ -223,17 +220,14 @@ cMaxAge = requiredSetting "maxAge"
 cInitialPopulationSize :: Setting Int
 cInitialPopulationSize = requiredSetting "initialPopSize"
 
-cIdealPopulationSize :: Setting Double
-cIdealPopulationSize = requiredSetting "idealPopSize"
+cIdealPopulationRange :: Setting (Double, Double)
+cIdealPopulationRange = requiredSetting "idealPopRange"
 
-cPopulationAllowedRange :: Setting (Double, Double)
-cPopulationAllowedRange = requiredSetting "popAllowedRange"
+cAllowedPopulationRange :: Setting (Double, Double)
+cAllowedPopulationRange = requiredSetting "popAllowedRange"
 
 cPopControl :: Setting Bool
 cPopControl = requiredSetting "popControl"
-
-cEnergyToAddWain :: Setting Double
-cEnergyToAddWain = requiredSetting "energyToAddWain"
 
 cFrequencies :: Setting [Rational]
 cFrequencies = requiredSetting "frequencies"
@@ -328,10 +322,9 @@ config2Universe getSetting =
       _uMaturityRange = getSetting cMaturityRange,
       _uMaxAge = getSetting cMaxAge,
       _uInitialPopulationSize = p0,
-      _uIdealPopulationSize = pIdeal,
-      _uPopulationAllowedRange = (a', b'),
+      _uIdealPopulationRange = (c', d'),
+      _uAllowedPopulationRange = (a', b'),
       _uPopControl = getSetting cPopControl,
-      _uEnergyToAddWain = getSetting cEnergyToAddWain,
       _uFrequencies = getSetting cFrequencies,
       _uBaseMetabolismDeltaE = getSetting cBaseMetabolismDeltaE,
       _uEnergyCostPerClassifierModel
@@ -358,8 +351,9 @@ config2Universe getSetting =
         workDir = getSetting cWorkingDir
         imageDir = getSetting cImageDir
         p0 = getSetting cInitialPopulationSize
-        fIdeal = getSetting cIdealPopulationSize
-        pIdeal = round (fromIntegral p0 * fIdeal)
-        (a, b) = getSetting cPopulationAllowedRange
-        a' = round (fromIntegral pIdeal * a)
-        b' = round (fromIntegral pIdeal * b)
+        (a, b) = getSetting cAllowedPopulationRange
+        a' = round (fromIntegral p0 * a)
+        b' = round (fromIntegral p0 * b)
+        (c, d) = getSetting cIdealPopulationRange
+        c' = round (fromIntegral p0 * c)
+        d' = round (fromIntegral p0 * d)

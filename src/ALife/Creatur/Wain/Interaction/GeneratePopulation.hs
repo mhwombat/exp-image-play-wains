@@ -38,7 +38,7 @@ introduceRandomAgent name = do
     <- liftIO . evalRandIO $ randomImageWain name u classifierSize
   -- Make the first generation a little hungry so they start learning
   -- immediately.
-  let (agent', _) = adjustEnergy 0.5 agent
+  let (agent', _) = adjustEnergy 0.8 agent
   writeToLog $ "GeneratePopulation: Created " ++ agentId agent'
   writeToLog $ "GeneratePopulation: Stats " ++ pretty (stats agent')
   store agent'
