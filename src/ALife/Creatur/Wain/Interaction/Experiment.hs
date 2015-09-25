@@ -497,7 +497,7 @@ adjustPopControlDeltaE xs =
 -- TODO: Make the 0.8 configurable
 idealPopControlDeltaE :: Double -> Double -> Double -> Int -> Double
 idealPopControlDeltaE average total budget pop
-  | average < 0.8 = (budget - total) / (fromIntegral pop)
+  | average < 0.8 = min 0.08 $ (budget - total) / (fromIntegral pop)
   | otherwise     = 0.8 - average
 
 totalEnergy :: StateT Experiment IO (Double, Double)
