@@ -268,13 +268,7 @@ run' = do
   when autoPopControl applyPopControl
   r <- chooseSubjectAction
   wainBeforeAction <- use subject
-  report $ "DEBUG In run', energy before =" ++ show (W._energy wainBeforeAction)
-  report $ "DEBUG In run', happiness before =" ++ show (W.happiness wainBeforeAction)
   runAction (_action r)
-  wombatE <- W._energy <$> use subject
-  wombatH <- W.happiness <$> use subject
-  report $ "DEBUG In run', energy after =" ++ show wombatE
-  report $ "DEBUG In run', happiness after =" ++ show wombatH
   letSubjectReflect wainBeforeAction r
   subject %= W.autoAdjustPassion
   subject %= W.autoAdjustBoredom
@@ -580,7 +574,7 @@ letSubjectReflect wainBefore r = do
   let (w', err) = W.reflect [p] r wainBefore w
   assign subject w'
   assign (summary . rErr) err
-  if deltaH < 0
+  if deltaH >= 0
     then
       report $ agentId w ++ "'s choice to " ++ show (_action r)
         ++ " (with) " ++ O.objectId obj ++ " was correct"
