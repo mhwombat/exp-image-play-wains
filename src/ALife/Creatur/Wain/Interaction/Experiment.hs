@@ -268,7 +268,13 @@ run' = do
   when autoPopControl applyPopControl
   r <- chooseSubjectAction
   wainBeforeAction <- use subject
+  report $ "DEBUG In run', energy before =" ++ show (W._energy wainBeforeAction)
+  report $ "DEBUG In run', happiness before =" ++ show (W.happiness wainBeforeAction)
   runAction (_action r)
+  wombatE <- W._energy <$> use subject
+  wombatH <- W.happiness <$> use subject
+  report $ "DEBUG In run', energy after =" ++ show wombatE
+  report $ "DEBUG In run', happiness after =" ++ show wombatH
   letSubjectReflect wainBeforeAction r
   subject %= W.autoAdjustPassion
   subject %= W.autoAdjustBoredom
