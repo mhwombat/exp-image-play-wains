@@ -364,12 +364,18 @@ chooseAction3 w obj = do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos
     mapM_ U.writeToLog $ decisionReport aos
-  let (cBMU, _):(cBMU2, _):_ = sortBy (comparing snd) . head $ lds
+  let bmuInfo
+        = formatBMUs . map fst . sortBy (comparing snd) . head $ lds
   U.writeToLog $ agentId w ++ " sees " ++ O.objectId obj
-    ++ ", classifies it as " ++ show cBMU ++ " (alt. " ++ show cBMU2
-    ++ ") and chooses to " ++ show (_action r)
+    ++ ", classifies it as " ++ bmuInfo
+    ++ " and chooses to " ++ show (_action r)
     ++ " predicting the outcomes " ++ show (_outcomes r)
   return (r, w')
+
+formatBMUs :: [Cl.Label] -> String
+formatBMUs (cBMU:cBMU2:_) = show cBMU ++ " (alt. " ++ show cBMU2 ++ ")"
+formatBMUs (cBMU:_)       = show cBMU
+formatBMUs _ = error "no BMUs"
 
 chooseObject :: [Rational] -> ImageWain -> ImageDB -> IO Object
 chooseObject freqs w db = do
