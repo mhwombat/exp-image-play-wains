@@ -62,6 +62,7 @@ module ALife.Creatur.Wain.Interaction.Universe
     uPredictorR0Range,
     uPredictorDRange,
     uDefaultOutcomeRange,
+    uImprintOutcomeRange,
     uDepthRange,
     uBoredomDeltaRange,
     uPassionDeltaRange,
@@ -137,6 +138,7 @@ data Universe a = Universe
     _uPredictorR0Range :: (UIDouble, UIDouble),
     _uPredictorDRange :: (UIDouble, UIDouble),
     _uDefaultOutcomeRange :: (PM1Double, PM1Double),
+    _uImprintOutcomeRange :: (PM1Double, PM1Double),
     _uDepthRange :: (Word8, Word8),
     _uBoredomDeltaRange :: (UIDouble, UIDouble),
     _uPassionDeltaRange :: (UIDouble, UIDouble),
@@ -265,6 +267,9 @@ cPredictorDRange = requiredSetting "predictorDecayRange"
 cDefaultOutcomeRange :: Setting (PM1Double, PM1Double)
 cDefaultOutcomeRange = requiredSetting "defaultOutcomeRange"
 
+cImprintOutcomeRange :: Setting (PM1Double, PM1Double)
+cImprintOutcomeRange = requiredSetting "imprintOutcomeRange"
+
 cDepthRange :: Setting (Word8, Word8)
 cDepthRange = requiredSetting "depthRange"
 
@@ -333,6 +338,7 @@ config2Universe getSetting =
       _uPredictorR0Range = getSetting cPredictorR0Range,
       _uPredictorDRange = getSetting cPredictorDRange,
       _uDefaultOutcomeRange = getSetting cDefaultOutcomeRange,
+      _uImprintOutcomeRange = getSetting cImprintOutcomeRange,
       _uDepthRange = getSetting cDepthRange,
       _uBoredomDeltaRange = getSetting cBoredomDeltaRange,
       _uPassionDeltaRange = getSetting cPassionDeltaRange,

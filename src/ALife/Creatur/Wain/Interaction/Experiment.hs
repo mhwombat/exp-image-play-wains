@@ -24,12 +24,12 @@ module ALife.Creatur.Wain.Interaction.Experiment
     finishRound,
     schemaQuality,
     printStats,
+    versionInfo,
     -- items below are only exported for testing
     idealPopControlDeltaE
   ) where
 
-import ALife.Creatur (agentId, isAlive)
--- import ALife.Creatur.Counter (current, increment)
+import ALife.Creatur (agentId, isAlive, programVersion)
 import ALife.Creatur.Task (checkPopSize)
 import qualified ALife.Creatur.Wain as W
 import ALife.Creatur.Wain.Brain (makeBrain, scenarioReport,
@@ -43,11 +43,10 @@ import ALife.Creatur.Wain.GeneticSOM (RandomExponentialParams(..),
 import qualified ALife.Creatur.Wain.Object as O
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Raw (raw)
-import ALife.Creatur.Wain.Response (Response, action, outcomes)
+import ALife.Creatur.Wain.Response (Response, _action, _outcomes)
 import ALife.Creatur.Wain.UnitInterval (UIDouble, uiToDouble)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Creatur.Wain.Interaction.Action (Action(..), numActions)
--- import qualified ALife.Creatur.Wain.Interaction.FMRI as F
 import ALife.Creatur.Wain.Image (bigX)
 import ALife.Creatur.Wain.ImageTweaker (ImageTweaker(..))
 import ALife.Creatur.Wain.ImageDB (ImageDB, anyImage)
@@ -63,13 +62,21 @@ import Control.Lens hiding (universe)
 import Control.Monad (when, unless)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen, getRandomR, getRandomRs,
-  evalRandIO, fromList)
+  getRandom, evalRandIO, fromList)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
-import Data.List (intercalate, minimumBy)
+import Data.List (intercalate, sortBy)
 import Data.Ord (comparing)
+import Data.Version (showVersion)
 import Data.Word (Word16)
+import Paths_interacting_wains (version)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
+
+versionInfo :: String
+versionInfo
+  = "numeral-wains-" ++ showVersion version
+      ++ ", compiled with " ++ W.packageVersion
+      ++ ", " ++ ALife.Creatur.programVersion
 
 type ImageWain = IW.ImageWain Action
 type Object = O.Object Action
@@ -96,11 +103,13 @@ randomImageWain wName u classifierSize = do
   let dr = buildPredictor fd predictorSize predictorThreshold
   -- TODO: Allow a range of random weights
   -- hw <- (makeWeights . take 3) <$> getRandomRs unitInterval
-  let hw = makeWeights [0.7, 0.3, 0.1]
-  dOut <- take 3 <$> getRandomRs (view U.uDefaultOutcomeRange u)
+  let hw = makeWeights [0.7, 0.3, 0, 0.1]
+  dOut <- take 4 <$> getRandomRs (view U.uDefaultOutcomeRange u)
   dp <- getRandomR $ view U.uDepthRange u
   let mr = makeMuser dOut dp
-  let wBrain = makeBrain c mr dr hw
+  t <- getRandom
+  ios <- take 4 <$> getRandomRs (view U.uImprintOutcomeRange u)
+  let wBrain = makeBrain c mr dr hw t ios
   wDevotion <- getRandomR . view U.uDevotionRange $ u
   wAgeOfMaturity <- getRandomR . view U.uMaturityRange $ u
   wPassionDelta <- getRandomR . view U.uBoredomDeltaRange $ u
@@ -134,6 +143,7 @@ data Summary = Summary
     _rFlirtCount :: Int,
     _rMateCount :: Int,
     _rIgnoreCount :: Int,
+    -- _rOptimalAction :: Int,
     _rDeathCount :: Int,
     _rMistakeCount :: Int
   }
@@ -165,6 +175,7 @@ initSummary p = Summary
     _rFlirtCount = 0,
     _rMateCount = 0,
     _rIgnoreCount = 0,
+    -- _rOptimalAction = 0,
     _rDeathCount = 0,
     _rMistakeCount = 0
   }
@@ -195,6 +206,7 @@ summaryStats r =
     Stats.iStat "flirted" (view rFlirtCount r),
     Stats.iStat "mated" (view rMateCount r),
     Stats.iStat "ignored" (view rIgnoreCount r),
+    -- Stats.iStat "optimal" (view rOptimalAction r),
     Stats.iStat "died" (view rDeathCount r),
     Stats.iStat "mistakes" (view rMistakeCount r)
   ]
@@ -256,7 +268,7 @@ run' = do
   when autoPopControl applyPopControl
   r <- chooseSubjectAction
   wainBeforeAction <- use subject
-  runAction (view action r)
+  runAction (_action r)
   letSubjectReflect wainBeforeAction r
   subject %= W.autoAdjustPassion
   subject %= W.autoAdjustBoredom
@@ -345,7 +357,6 @@ chooseAction3 w obj = do
     (mapM_ U.writeToLog . IW.describePredictorModels $ w)
   let (lds, sps, rplos, aos, r, w')
         = W.chooseAction [O.objectAppearance obj] w
-  let objLabel = analyseClassification lds
   -- whenM (use U.uGenFmris) (writeFmri w)
   whenM (use U.uGenFmris)
     (mapM_ U.writeToLog . IW.describeClassifierModels $ w)
@@ -353,16 +364,12 @@ chooseAction3 w obj = do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos
     mapM_ U.writeToLog $ decisionReport aos
-  U.writeToLog $  agentId w ++ " sees " ++ O.objectId obj
-    ++ ", classifies it as " ++ show objLabel ++ " and chooses to "
-    ++ show (view action r) ++ " predicting the outcomes "
-    ++ show (view outcomes r)
+  let (cBMU, _):(cBMU2, _):_ = sortBy (comparing snd) . head $ lds
+  U.writeToLog $ agentId w ++ " sees " ++ O.objectId obj
+    ++ ", classifies it as " ++ show cBMU ++ " (alt. " ++ show cBMU2
+    ++ ") and chooses to " ++ show (_action r)
+    ++ " predicting the outcomes " ++ show (_outcomes r)
   return (r, w')
-
-analyseClassification
-  :: [[(Cl.Label, Cl.Difference)]] -> Cl.Label
-analyseClassification ldss = l
-  where ((l, _):_) = map (minimumBy (comparing snd)) ldss
 
 chooseObject :: [Rational] -> ImageWain -> ImageDB -> IO Object
 chooseObject freqs w db = do
@@ -446,7 +453,8 @@ applyFlirtationEffects :: StateT Experiment IO ()
 applyFlirtationEffects = do
   deltaE <- use (universe . U.uFlirtingDeltaE)
   report $ "Applying flirtation energy adjustment"
-  IW.adjustEnergy subject deltaE rFlirtingDeltaE "flirting" summary report
+  IW.adjustEnergy subject deltaE rFlirtingDeltaE "flirting" summary
+    report
   (summary.rFlirtCount) += 1
 
 updateChildren :: StateT Experiment IO ()
@@ -463,8 +471,8 @@ killIfTooOld = do
   a <- view W.age <$> use subject
   maxAge <- use (universe . U.uMaxAge)
   when (fromIntegral a > maxAge) $
-    IW.adjustEnergy subject (-100) rOldAgeDeltaE "old age"
-      summary report
+    IW.adjustEnergy subject (-100) rOldAgeDeltaE "old age" summary
+      report
 
 finishRound :: FilePath -> StateT (U.Universe ImageWain) IO ()
 finishRound f = do
@@ -494,7 +502,7 @@ adjustPopControlDeltaE xs =
     U.writeToLog $ "Adjusted pop. control Δe = " ++ show c
     zoom U.uPopControlDeltaE $ putPS c
 
--- TODO: Make the 0.8 configurable
+-- TODO: Make the numbers configurable
 idealPopControlDeltaE :: Double -> Double -> Double -> Int -> Double
 idealPopControlDeltaE average total budget pop
   | average < 0.8 = min 0.08 $ (budget - total) / (fromIntegral pop)
@@ -539,7 +547,8 @@ letSubjectReflect
   :: ImageWain -> Response Action -> StateT Experiment IO ()
 letSubjectReflect wainBefore r = do
   w <- use subject
-  p <- O.objectAppearance <$> use other
+  obj <- use other
+  let p = O.objectAppearance obj
   let energyBefore = view W.energy wainBefore
   let boredomBefore = view W.boredom wainBefore
   let passionBefore = view W.passion wainBefore
@@ -559,11 +568,14 @@ letSubjectReflect wainBefore r = do
   let (w', err) = W.reflect [p] r wainBefore w
   assign subject w'
   assign (summary . rErr) err
-  when (deltaH < 0) $ do
-    b <- use other
-    report $ agentId w ++ "'s choice to " ++ show (view action r)
-      ++ " (with) " ++ O.objectId b ++ " was a mistake"
-    (summary . rMistakeCount) += 1
+  if deltaH < 0
+    then
+      report $ agentId w ++ "'s choice to " ++ show (_action r)
+        ++ " (with) " ++ O.objectId obj ++ " was correct"
+    else do
+      report $ agentId w ++ "'s choice to " ++ show (_action r)
+        ++ " (with) " ++ O.objectId obj ++ " was wrong"
+      (summary . rMistakeCount) += 1
 
 writeRawStats
   :: String -> FilePath -> [Stats.Statistic]
