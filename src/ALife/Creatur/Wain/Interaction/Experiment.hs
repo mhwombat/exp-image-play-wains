@@ -68,7 +68,7 @@ import Data.List (intercalate, sortBy)
 import Data.Ord (comparing)
 import Data.Version (showVersion)
 import Data.Word (Word16)
-import Paths_interacting_wains (version)
+import Paths_exp_image_play_wains (version)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
 
