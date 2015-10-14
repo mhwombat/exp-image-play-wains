@@ -1,10 +1,8 @@
-name:                interacting-wains
-version:             2.22
-synopsis:            Agent for categorising images.
-description:         ALife agent that works co-operatively with other
-                     agents to develop a classification scheme for
-                     images.
-homepage:            https://github.com/mhwombat/interacting-wains
+name:                exp-image-play-wains
+version:             2.23
+synopsis:            Agent that interacts with images.
+description:         ALife agent that can eat, play, flirt, ignore.
+homepage:            https://github.com/mhwombat/exp-image-play-wains
 license:             BSD3
 license-file:        LICENSE
 author:              Amy de Buitléir
@@ -14,16 +12,7 @@ category:            Data
 build-type:          Simple
 cabal-version:       >=1.8
 
-source-repository head
-  type:     git
-  location: https://github.com/mhwombat/interacting-wains.git
-
-source-repository this
-  type:     git
-  location: https://github.com/mhwombat/interacting-wains.git
-  tag:      2.22
-
-executable interaction-daemon
+executable exp-image-play-wains-daemon
   main-is:          ALife/Creatur/Wain/Interaction/Daemon.hs
   ghc-options:      -Wall -Werror -O2 -rtsopts -threaded
   build-depends:
@@ -58,7 +47,7 @@ executable interaction-daemon
                     zlib ==0.6.*
   hs-source-dirs:   src
 
-executable interaction-init
+executable exp-image-play-wains-init
   main-is:          ALife/Creatur/Wain/Interaction/GeneratePopulation.hs
   ghc-options:      -Wall -Werror -O2 -rtsopts -threaded
   build-depends:
@@ -91,7 +80,7 @@ executable interaction-init
                     zlib ==0.6.*
   hs-source-dirs:   src
 
-executable interaction-examine
+executable exp-image-play-wains-examine
   main-is:          ALife/Creatur/Wain/Interaction/ExamineAgent.hs
   ghc-options:      -Wall -Werror
   build-depends:
@@ -124,7 +113,7 @@ executable interaction-examine
                     zlib ==0.6.*
   hs-source-dirs:   src
 
-Test-suite interaction-tests
+Test-suite exp-image-play-wains-tests
   Type:             exitcode-stdio-1.0
   Main-is:          Main.hs
   GHC-Options:      -Wall -fno-warn-orphans
@@ -160,7 +149,7 @@ Test-suite interaction-tests
                     QuickCheck ==2.8.*
   Other-modules:    ALife.Creatur.Wain.Interaction.ActionQC
 
-executable interaction-learning-test
+executable exp-image-play-wains-learning-test
   main-is:          LearningTest.hs
   ghc-options:      -Wall -Werror
   build-depends:

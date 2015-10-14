@@ -74,7 +74,7 @@ import System.FilePath (dropFileName)
 
 versionInfo :: String
 versionInfo
-  = "numeral-wains-" ++ showVersion version
+  = "exp-image-play-wains-" ++ showVersion version
       ++ ", compiled with " ++ W.packageVersion
       ++ ", " ++ ALife.Creatur.programVersion
 
@@ -574,13 +574,21 @@ letSubjectReflect wainBefore r = do
   let (w', err) = W.reflect [p] r wainBefore w
   assign subject w'
   assign (summary . rErr) err
-  if deltaH >= 0
-    then
+  reportNetResult w obj r deltaH
+
+reportNetResult
+  :: ImageWain -> Object -> Response Action -> Double
+    -> StateT Experiment IO ()
+reportNetResult w obj r deltaH
+ | deltaH == 0 =
       report $ agentId w ++ "'s choice to " ++ show (_action r)
-        ++ " (with) " ++ O.objectId obj ++ " was correct"
-    else do
+        ++ " (with) " ++ O.objectId obj ++ " was neutral"
+ | deltaH > 0 =
       report $ agentId w ++ "'s choice to " ++ show (_action r)
-        ++ " (with) " ++ O.objectId obj ++ " was wrong"
+        ++ " (with) " ++ O.objectId obj ++ " was beneficial"
+ | otherwise  = do
+      report $ agentId w ++ "'s choice to " ++ show (_action r)
+        ++ " (with) " ++ O.objectId obj ++ " was harmful"
       (summary . rMistakeCount) += 1
 
 writeRawStats
