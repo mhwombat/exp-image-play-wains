@@ -109,7 +109,7 @@ randomImageWain wName u classifierSize = do
   let mr = makeMuser dOut dp
   t <- getRandom
   ios <- take 4 <$> getRandomRs (view U.uImprintOutcomeRange u)
-  let wBrain = makeBrain c mr dr hw t ios
+  let (Right wBrain) = makeBrain c mr dr hw t ios
   wDevotion <- getRandomR . view U.uDevotionRange $ u
   wAgeOfMaturity <- getRandomR . view U.uMaturityRange $ u
   wPassionDelta <- getRandomR . view U.uBoredomDeltaRange $ u
