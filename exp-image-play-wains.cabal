@@ -1,5 +1,5 @@
 name:                exp-image-play-wains
-version:             2.24
+version:             2.25
 synopsis:            Agent that interacts with images.
 description:         ALife agent that can eat, play, flirt, ignore.
 homepage:            https://github.com/mhwombat/exp-image-play-wains

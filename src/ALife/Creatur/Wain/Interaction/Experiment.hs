@@ -364,6 +364,7 @@ chooseAction3 w obj = do
     mapM_ U.writeToLog $ scenarioReport sps
     mapM_ U.writeToLog $ responseReport rplos
     mapM_ U.writeToLog $ decisionReport aos
+  when (null lds) $ U.writeToLog "lds is null"
   let bmuInfo
         = formatBMUs . map fst . sortBy (comparing snd) . head $ lds
   U.writeToLog $ agentId w ++ " sees " ++ O.objectId obj
